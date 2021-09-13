@@ -11,6 +11,9 @@ private:
 	LRESULT OnNCHitTest(HWND hWnd, WPARAM wParam, LPARAM lParam);
 	LRESULT OnSize(HWND hWnd, LPARAM lParam);
 
+	RECT m_rcTree = { 0 };
+	HWND m_hTreeWindow = nullptr;
+
 public:
 	Explorer(HWND hParentWindow);
 

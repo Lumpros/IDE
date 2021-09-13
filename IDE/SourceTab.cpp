@@ -316,6 +316,11 @@ void SourceTab::Unselect(void)
 	}
 }
 
+void SourceTab::HideCloseButton(void) const
+{
+	ShowWindow(m_hCloseButton, SW_HIDE);
+}
+
 bool SourceTab::IsSelected(void)
 {
 	return m_IsSelected;

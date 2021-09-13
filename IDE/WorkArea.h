@@ -26,6 +26,7 @@ public:
 
 	void OnDPIChanged(void);
 	void UnselectAllTabs(void);
+	void SelectFileFromName(wchar_t* lpszName);
 
 	LRESULT WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 };

@@ -56,7 +56,6 @@ static HRESULT RegisterSourceEditorWindowClass(HINSTANCE hInstance)
 		wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
 		wcex.lpfnWndProc = ::SourceEditorWindowProcedure;
 		wcex.cbWndExtra = sizeof(WorkArea*);
-		wcex.style = CS_HREDRAW | CS_VREDRAW;
 
 		if (!RegisterClassEx(&wcex))
 			return E_FAIL;
@@ -92,11 +91,11 @@ HRESULT WorkArea::InitializeSourceEditorWindow(HINSTANCE hInstance)
 	InsertSourceTab(pSourceTab);
 
 	pSourceTab = new SourceTab(m_hWndSelf);
-	pSourceTab->SetName(L"app.c");
+	pSourceTab->SetName(L"app.h");
 	InsertSourceTab(pSourceTab);
 
 	pSourceTab = new SourceTab(m_hWndSelf);
-	pSourceTab->SetName(L"buffer.c");
+	pSourceTab->SetName(L"app.c");
 	InsertSourceTab(pSourceTab);
 
 	return S_OK;
@@ -196,11 +195,13 @@ LRESULT WorkArea::OnSize(HWND hWnd, LPARAM lParam)
 LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 {
 	SourceTab* pSourceTab = reinterpret_cast<SourceTab*>(lParam);
-
 	pSourceTab->Hide();
 
-	if (pSourceTab->IsSelected())
+	const bool isSelected = pSourceTab->IsSelected();
+
+	if (isSelected)
 	{
+		pSourceTab->Unselect();
 		pSourceTab->GetSourceEdit()->Hide();
 	}
 
@@ -211,16 +212,19 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 	{
 		if (m_Tabs[i] == pSourceTab)
 		{
-			if (m_Tabs.size() != 1)
+			if (m_Tabs.size() != 1 && isSelected)
 			{
 				try {
 					m_Tabs.at(i + 1)->Select();
+					m_SourceIndex = i + 1;
 				} catch (...) {
 					m_Tabs.at(i - 1)->Select();
+					m_SourceIndex = i - 1;
 				}
 			}
 
 			m_ClosedTabs.push_back(m_Tabs[i]);
+			m_Tabs[i]->HideCloseButton();
 			m_Tabs.erase(m_Tabs.begin() + i);
 		}
 	}
@@ -231,6 +235,41 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 	}
 
 	return 0;
+}
+
+void WorkArea::SelectFileFromName(wchar_t* lpszName)
+{
+	for (size_t i = 0; i < m_Tabs.size(); ++i)
+	{
+		if (lstrcmp(m_Tabs[i]->GetName(), lpszName) == 0)
+		{
+			m_Tabs[m_SourceIndex]->Unselect();
+			m_Tabs[i]->Select();
+			m_SourceIndex = i;
+			return;
+		}
+	}
+
+	const bool areTabsOpened = (m_Tabs.size() > 0);
+
+	for (size_t i = 0; i < m_ClosedTabs.size(); ++i)
+	{
+		if (lstrcmp(m_ClosedTabs[i]->GetName(), lpszName) == 0)
+		{
+			if (areTabsOpened)
+			{
+				m_Tabs[m_SourceIndex]->Unselect();
+			}
+
+			m_Tabs.push_back(m_ClosedTabs[i]);
+			m_SourceIndex = m_Tabs.size() - 1;
+			m_ClosedTabs[i]->Show();
+			m_ClosedTabs[i]->Select();
+			m_ClosedTabs[i]->SetPos(m_ClosedTabs[i]->GetRect().right * m_SourceIndex, 0);
+			m_ClosedTabs.erase(m_ClosedTabs.begin() + i);
+			break;
+		}
+	}
 }
 
 int WorkArea::GetSelectedTabIndex(void) const

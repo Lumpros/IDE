@@ -4,10 +4,58 @@
 #include "Utility.h"
 #include "AppWindow.h"
 
+#include <CommCtrl.h>
+#include <windowsx.h>
+
 #define EXPLORER_WINDOW_CLASS L"IDEExplorerWindowClass"
 
 static HRESULT RegisterExplorerWindowClass(HINSTANCE hInstance);
 static LRESULT CALLBACK ExplorerWindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+HTREEITEM AddItemToTree(HWND hwndTV, LPTSTR lpszItem, int nLevel)
+{
+	TVITEM tvi;
+	TVINSERTSTRUCT tvins;
+	static HTREEITEM hPrev = (HTREEITEM)TVI_FIRST;
+	static HTREEITEM hPrevRootItem = NULL;
+	static HTREEITEM hPrevLev2Item = NULL;
+	HTREEITEM hti;
+
+	tvi.mask = TVIF_TEXT | TVIF_PARAM;
+
+	// Set the text of the item. 
+	tvi.pszText = lpszItem;
+	tvi.cchTextMax = lstrlen(lpszItem);
+
+	// Save the heading level in the item's application-defined 
+	// data area. 
+	tvi.lParam = (LPARAM)nLevel;
+	tvins.item = tvi;
+	tvins.hInsertAfter = hPrev;
+
+	// Set the parent item based on the specified level. 
+	if (nLevel == 1)
+		tvins.hParent = TVI_ROOT;
+	else if (nLevel == 2)
+		tvins.hParent = hPrevRootItem;
+	else
+		tvins.hParent = hPrevLev2Item;
+
+	// Add the item to the tree-view control. 
+	hPrev = (HTREEITEM)SendMessage(hwndTV, TVM_INSERTITEM,
+		0, (LPARAM)(LPTVINSERTSTRUCT)&tvins);
+
+	if (hPrev == NULL)
+		return NULL;
+
+	// Save the handle to the item. 
+	if (nLevel == 1)
+		hPrevRootItem = hPrev;
+	else if (nLevel == 2)
+		hPrevLev2Item = hPrev;
+
+	return hPrev;
+}
 
 Explorer::Explorer(HWND hParentWindow)
 {
@@ -45,7 +93,6 @@ static HRESULT RegisterExplorerWindowClass(HINSTANCE hInstance)
 		wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
 		wcex.lpfnWndProc = ::ExplorerWindowProcedure;
 		wcex.cbWndExtra = sizeof(Explorer*);
-		wcex.style = CS_HREDRAW | CS_VREDRAW;
 
 		if (!RegisterClassEx(&wcex))
 			return E_FAIL;
@@ -70,6 +117,35 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 		this
 	);
 
+	if (m_hWndSelf)
+	{
+		m_hTreeWindow = CreateWindowEx(
+			NULL,
+			WC_TREEVIEW,
+			L"Tree View",
+			WS_VISIBLE | WS_CHILD | TVS_HASLINES | TVS_LINESATROOT | 
+			TVS_HASBUTTONS | WS_CLIPCHILDREN | TVS_EDITLABELS,
+			0, 0,
+			m_rcSelf.right,
+			m_rcSelf.bottom,
+			m_hWndSelf,
+			nullptr,
+			hInstance,
+			nullptr
+		);
+
+		if (!m_hTreeWindow) {
+			Logger::Write(L"Failed to create tree view window!");
+		}
+
+		AddItemToTree(m_hTreeWindow, (wchar_t*)L"Project", 1);
+		AddItemToTree(m_hTreeWindow, (wchar_t*)L"Header Files", 2);
+		AddItemToTree(m_hTreeWindow, (wchar_t*)L"app.h", 3);
+		AddItemToTree(m_hTreeWindow, (wchar_t*)L"Source Files", 2);
+		AddItemToTree(m_hTreeWindow, (wchar_t*)L"main.c", 3);
+		AddItemToTree(m_hTreeWindow, (wchar_t*)L"app.c", 3);
+	}
+
 	return m_hWndSelf ? S_OK : E_FAIL;
 }
 
@@ -85,7 +161,27 @@ LRESULT Explorer::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 
 	case WM_SIZE:
 		return OnSize(hWnd, lParam);
+
+	case WM_NOTIFY:
+	{
+		LPNMHDR info = reinterpret_cast<LPNMHDR>(lParam);
 		
+		if (info->code == NM_DBLCLK)
+		{
+			HTREEITEM hTreeItem = TreeView_GetSelection(m_hTreeWindow);
+			wchar_t buf[128];
+
+			TVITEM item;
+			item.hItem = hTreeItem;
+			item.mask = TVIF_TEXT;
+			item.cchTextMax = 128;
+			item.pszText = buf;
+			TreeView_GetItem(m_hTreeWindow, &item);
+
+			GetAssociatedObject<AppWindow>(m_hWndParent)->GetWorkArea()->SelectFileFromName(item.pszText);
+		}
+	}
+	return 0;
 	}
 
 	return DefWindowProc(hWnd, uMsg, wParam, lParam);
@@ -132,6 +228,11 @@ LRESULT Explorer::OnSize(HWND hWnd, LPARAM lParam)
 		pWorkArea->SetPos(m_rcSelf.right + 3, 0);
 		pWorkArea->SetSize(rcClient.right - m_rcSelf.right - 6, m_rcSelf.bottom);
 	}
+
+	m_rcTree.right = m_rcSelf.right - 10;
+	m_rcTree.bottom = m_rcSelf.bottom;
+
+	SetWindowPos(m_hTreeWindow, nullptr, 0, 0, m_rcTree.right, m_rcTree.bottom, SWP_NOZORDER | SWP_NOMOVE);
 
 	return 0;
 }

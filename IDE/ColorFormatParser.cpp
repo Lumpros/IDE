@@ -60,11 +60,6 @@ void ColorFormatParser::ParseFile(const wchar_t* lpszFileName)
 			);
 		}
 	}
-
-	if (success)
-	{
-		Logger::Write(L"%ls was parsed successfully", lpszFileName);
-	}
 }
 
 CRSTATUS ColorFormatParser::GetKeywordColor(const wchar_t* lpszKeyword)

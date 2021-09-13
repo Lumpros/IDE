@@ -52,7 +52,31 @@ END
 
 IDR_MENU1 MENU
 BEGIN
-    MENUITEM "&File",                       0
+    POPUP "&File"
+    BEGIN
+        POPUP "New"
+        BEGIN
+            MENUITEM "Project...\tCtrl+Shift+N",    ID_NEW_PROJECT
+            MENUITEM "File...\tCtrl+N",             ID_NEW_FILE
+        END
+        POPUP "Open"
+        BEGIN
+            MENUITEM "Project...\tCtrl+Shift+O",    ID_OPEN_PROJECT
+            MENUITEM "Folder\tCtrl+Shift+Alt+O",    ID_OPEN_FILE
+            MENUITEM SEPARATOR
+            MENUITEM "File\tCtrl+O",                ID_OPEN_FILE40009
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "Close",                       ID_FILE_CLOSE
+        MENUITEM SEPARATOR
+        MENUITEM "Save File\tCtrl+S",           ID_FILE_SAVEFILE
+        MENUITEM "Save File As...",             ID_FILE_SAVEFILEAS
+        MENUITEM "Save All\tCtrl+Shift+S",      ID_FILE_SAVEALL
+        MENUITEM SEPARATOR
+        MENUITEM "Recent Files",                65535
+        MENUITEM SEPARATOR
+        MENUITEM "Exit\tAlt+F4",                ID_FILE_EXIT
+    END
     MENUITEM "&Edit",                       0
     MENUITEM "&View",                       0
     MENUITEM "&Program",                    0

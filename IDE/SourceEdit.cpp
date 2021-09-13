@@ -43,7 +43,7 @@ static LRESULT OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	SelectObject(hDC, Utility::GetStandardFont());
 	SelectObject(hDC, GetStockObject(WHITE_BRUSH));
 	SelectObject(hDC, GetStockObject(WHITE_PEN));
-	SetTextColor(hDC, RGB(245, 0, 0));
+	SetTextColor(hDC, RGB(150, 150, 150));
 
 	const int left_margin = LOWORD(SendMessage(hWnd, EM_GETMARGINS, NULL, NULL));
 	const int x_offset    = static_cast<const int>(8 * Utility::GetScaleForDPI(hWnd));
@@ -106,8 +106,6 @@ static LRESULT OnKeyDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
 
 static LRESULT OnCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
-	WPARAM value = wParam;
-
 	return DefSubclassProc(hWnd, WM_COMMAND, wParam, lParam);
 }
 
@@ -145,8 +143,8 @@ SourceEdit::SourceEdit(HWND hParentWindow)
 		0,
 		MSFTEDIT_CLASS,
 		L"",
-		WS_CHILD | ES_AUTOHSCROLL | ES_AUTOVSCROLL | 
-		ES_MULTILINE | WS_VSCROLL | WS_HSCROLL,
+		WS_CHILD | ES_AUTOVSCROLL | ES_MULTILINE |
+		WS_VSCROLL | WS_HSCROLL | ES_AUTOHSCROLL,
 		0, 0, 0, 0,
 		m_hWndParent,
 		0,

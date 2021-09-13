@@ -41,5 +41,8 @@ public:
 	void Select(void);
 	void Unselect(void);
 	void SetName(LPCWSTR lpszName);
+	void HideCloseButton(void) const;
+
+	const wchar_t* GetName(void) const { return m_sInfo.lpszFileName; }
 };
 
