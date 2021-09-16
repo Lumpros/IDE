@@ -177,7 +177,7 @@ LRESULT Explorer::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 			item.cchTextMax = 128;
 			item.pszText = buf;
 			TreeView_GetItem(m_hTreeWindow, &item);
-
+			
 			GetAssociatedObject<AppWindow>(m_hWndParent)->GetWorkArea()->SelectFileFromName(item.pszText);
 		}
 	}
@@ -220,13 +220,20 @@ LRESULT Explorer::OnSize(HWND hWnd, LPARAM lParam)
 	AppWindow* pAppWindow = GetAssociatedObject<AppWindow>(m_hWndParent);
 	WorkArea* pWorkArea = pAppWindow->GetWorkArea();
 
+	RECT rcClient;
+	GetClientRect(GetAncestor(hWnd, GA_ROOT), &rcClient);
+
 	if (pWorkArea)
 	{
-		RECT rcClient;
-		GetClientRect(GetAncestor(hWnd, GA_ROOT), &rcClient);
-
 		pWorkArea->SetPos(m_rcSelf.right + 3, 0);
-		pWorkArea->SetSize(rcClient.right - m_rcSelf.right - 6, m_rcSelf.bottom);
+
+		Output* pOutput = pAppWindow->GetOutputWindow();
+
+		if (pOutput)
+		{
+			pOutput->SetPos(m_rcSelf.right + 3, pWorkArea->GetRect().bottom + 3);
+			pOutput->SetSize(rcClient.right - m_rcSelf.right - 3, pOutput->GetRect().bottom);
+		}
 	}
 
 	m_rcTree.right = m_rcSelf.right - 10;

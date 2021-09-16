@@ -72,7 +72,7 @@ HRESULT WorkArea::InitializeSourceEditorWindow(HINSTANCE hInstance)
 		0,
 		SOURCE_EDITOR_CLASS,
 		nullptr,
-		WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
+		WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_CLIPSIBLINGS,
 		0, 0, 0, 0,
 		m_hWndParent,
 		nullptr,
@@ -83,7 +83,6 @@ HRESULT WorkArea::InitializeSourceEditorWindow(HINSTANCE hInstance)
 	if (!m_hWndSelf) {
 		return E_FAIL;
 	}
-
 
 	SourceTab* pSourceTab = new SourceTab(m_hWndSelf);
 	pSourceTab->SetName(L"main.c");
@@ -222,7 +221,7 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 					m_SourceIndex = i - 1;
 				}
 			}
-
+			
 			m_ClosedTabs.push_back(m_Tabs[i]);
 			m_Tabs[i]->HideCloseButton();
 			m_Tabs.erase(m_Tabs.begin() + i);

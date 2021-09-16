@@ -145,6 +145,8 @@
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="AppWindow.cpp" />
+    <ClCompile Include="ODButton.cpp" />
+    <ClCompile Include="Output.cpp" />
     <ClCompile Include="SourceEdit.cpp" />
     <ClCompile Include="WorkArea.cpp" />
     <ClCompile Include="SourceTab.cpp" />
@@ -158,6 +160,8 @@
     <ClInclude Include="ColorFormatParser.h" />
     <ClInclude Include="Explorer.h" />
     <ClInclude Include="Logger.h" />
+    <ClInclude Include="ODButton.h" />
+    <ClInclude Include="Output.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="SourceEdit.h" />
     <ClInclude Include="WorkArea.h" />

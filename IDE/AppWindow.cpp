@@ -13,6 +13,7 @@ AppWindow::~AppWindow(void)
 {
 	SAFE_DELETE_PTR(m_pExplorer);
 	SAFE_DELETE_PTR(m_pWorkArea);
+	SAFE_DELETE_PTR(m_pOutput);
 }
 
 void AppWindow::Initialize(HINSTANCE hInstance)
@@ -48,7 +49,6 @@ static HRESULT RegisterAppWindowClass(HINSTANCE hInstance)
 		wcex.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 		wcex.lpfnWndProc = ::AppWindowProcedure;
 		wcex.cbWndExtra = sizeof(AppWindow*);
-		wcex.style = CS_HREDRAW | CS_VREDRAW;
 
 		if (!RegisterClassEx(&wcex))
 			return E_FAIL;
@@ -84,10 +84,16 @@ HRESULT AppWindow::InitializeWindow(HINSTANCE hInstance)
 		LoadMenu(hInstance, MAKEINTRESOURCE(IDR_MENU1))
 	);
 
-	m_pWorkArea = new WorkArea(m_hWndSelf);
+	RECT rcClient;
+	GetClientRect(m_hWndSelf, &rcClient);
+	m_rcSelf.right = rcClient.right;
+	m_rcSelf.bottom = rcClient.bottom;
 
-	m_pExplorer = new Explorer(m_hWndSelf);
-	m_pExplorer->SetSize((int)(250 * Utility::GetScaleForDPI(m_hWndSelf)), 0);
+	if (FAILED(InitializeComponents()))
+	{
+		Logger::Write(L"Failed to initialize one or more components");
+		return E_FAIL;
+	}
 
 	Utility::CenterWindowRelativeToParent(m_hWndSelf);
 
@@ -95,6 +101,36 @@ HRESULT AppWindow::InitializeWindow(HINSTANCE hInstance)
 	UpdateWindow(m_hWndSelf);
 
 	return S_OK;
+}
+
+HRESULT AppWindow::InitializeComponents(void)
+{
+	HRESULT hr = E_FAIL;
+
+	m_pWorkArea = new WorkArea(m_hWndSelf);
+
+	if (m_pWorkArea)
+	{
+		m_pExplorer = new Explorer(m_hWndSelf);
+		
+		if (m_pExplorer)
+		{
+			m_pExplorer->SetSize(static_cast<int>(250 * Utility::GetScaleForDPI(m_hWndSelf)), 0);
+			m_pWorkArea->SetSize(m_rcSelf.right - m_pExplorer->GetRect().right - 6, m_rcSelf.bottom * 2 / 3);
+
+			m_pOutput = new Output(m_hWndSelf);
+
+			if (m_pOutput)
+			{
+				m_pOutput->SetPos(m_pExplorer->GetRect().right + 3, m_rcSelf.bottom * 3 / 4 + 3);
+				m_pOutput->SetSize(m_rcSelf.right - m_pExplorer->GetRect().right - 6, m_rcSelf.bottom / 4 - 3);
+
+				hr = S_OK;
+			}
+		}
+	}
+
+	return hr;
 }
 
 LRESULT AppWindow::WindowProcedure(HWND hWnd, UINT uMessage, WPARAM wParam, LPARAM lParam)
@@ -119,21 +155,23 @@ LRESULT AppWindow::OnSize(HWND hWnd, LPARAM lParam)
 	m_rcSelf.right = LOWORD(lParam);
 	m_rcSelf.bottom = HIWORD(lParam);
 
-	int iExplorerWidth = 0;
-
 	if (m_pExplorer)
 	{
-		iExplorerWidth = m_pExplorer->GetRect().right;
-		m_pExplorer->SetSize(iExplorerWidth, m_rcSelf.bottom);
-	}
+		const int iExplorerWidth = m_pExplorer->GetRect().right;
+		const int iWorkAreaHeight = m_pWorkArea->GetRect().bottom;
 
-	if (m_pWorkArea)
-	{
-		m_pWorkArea->SetPos(iExplorerWidth + 3, 0);
-		m_pWorkArea->SetSize(
-			m_rcSelf.right - iExplorerWidth - 6,
-			m_rcSelf.bottom
-		);
+		m_pExplorer->SetSize(iExplorerWidth, m_rcSelf.bottom);
+
+		if (m_pWorkArea)
+		{
+			m_pWorkArea->SetPos(iExplorerWidth + 3, 0);
+
+			if (m_pOutput)
+			{
+				m_pOutput->SetPos(iExplorerWidth + 3, m_rcSelf.bottom - m_pOutput->GetRect().bottom);
+				m_pOutput->SetSize(m_rcSelf.right - iExplorerWidth - 3, m_pOutput->GetRect().bottom);
+			}
+		}
 	}
 
 	return 0;
@@ -184,6 +222,7 @@ static LRESULT CALLBACK AppWindowProcedure(HWND hWnd, UINT uMessage, WPARAM wPar
 
 	case WM_CLOSE:
 		PostQuitMessage(0);
+		ShowWindow(hWnd, SW_HIDE);
 		return 0;
 
 	case WM_QUIT:

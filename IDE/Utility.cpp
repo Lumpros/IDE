@@ -2,6 +2,8 @@
 
 #include <stdlib.h>
 
+#define DOT_NOT_FOUND -1
+
 HFONT hFont = nullptr;
 
 void Utility::CenterWindowRelativeToParent(HWND hWnd)
@@ -79,4 +81,28 @@ void Utility::UpdateFont(HWND hWnd)
 int Utility::GetStandardFontHeight(HWND hWnd)
 {
 	return static_cast<int>(16 * GetScaleForDPI(hWnd));
+}
+
+std::wstring Utility::GetFileExtension(const wchar_t* lpszFileName)
+{
+	const size_t length = lstrlen(lpszFileName);
+	int dot_index = DOT_NOT_FOUND;
+
+	std::wstring extension;
+
+	for (size_t i = 0; i < length; ++i)
+	{
+		if (lpszFileName[i] == L'.')
+		{
+			dot_index = i;
+			break;
+		}
+	}
+
+	if (dot_index != DOT_NOT_FOUND)
+	{
+		extension.assign(lpszFileName + dot_index, lpszFileName + length);
+	}
+
+	return extension;
 }

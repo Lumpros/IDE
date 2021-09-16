@@ -3,6 +3,7 @@
 #include "Utility.h"
 
 #include <CommCtrl.h>
+#include <Uxtheme.h>
 
 #pragma comment(lib, "ComCtl32.lib")
 
@@ -22,6 +23,7 @@ INT APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
 	InitCommonControls();
+	BufferedPaintInit();
 
 	Logger::SetOutputPath(L"logs.txt");
 
@@ -35,6 +37,8 @@ INT APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	}
 
 	m_App.Run();
+
+	BufferedPaintUnInit();
 
 	return 0;
 }
