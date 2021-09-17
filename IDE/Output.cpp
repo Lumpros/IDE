@@ -1,99 +1,75 @@
 #include "Output.h"
-#include "Utility.h"
 
+#include <ctime>
+#include <strsafe.h>
 #include <CommCtrl.h>
-
-struct ListViewColumn
-{
-	int cx;
-	const wchar_t* lpszName;
-};
-
-ListViewColumn columns[] = {
-		{ 30, L" " },
-		{ 50, L"Code" },
-		{ 400, L"Description" },
-		{ 100, L"File" },
-		{ 50, L"Line" },
-};
-
-LRESULT CALLBACK ListViewSubclassProcedure(
-	HWND hWnd,
-	UINT uMessage,
-	WPARAM wParam,
-	LPARAM lParam,
-	UINT_PTR uIdSubclass,
-	DWORD_PTR dwRefData)
-{
-	switch (uMessage)
-	{
-	case WM_DPICHANGED_BEFOREPARENT:
-		((Output*)(dwRefData))->OnDPIChange();
-		break;
-	}
-
-	return DefSubclassProc(hWnd, uMessage, wParam, lParam);
-}
+#include <Richedit.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 Output::Output(HWND hParentWindow)
 {
 	m_hWndParent = hParentWindow;
-	
+
 	m_hWndSelf = CreateWindow(
-		WC_LISTVIEW,
-		L"",
-		WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_SINGLESEL,
+		MSFTEDIT_CLASS,
+		nullptr,
+		WS_CHILD | ES_READONLY,
 		0, 0, 0, 0,
 		m_hWndParent,
 		nullptr,
-		GetModuleHandle(nullptr),
+		GetModuleHandle(NULL),
 		nullptr
 	);
 
-	SetWindowSubclass(m_hWndSelf, ListViewSubclassProcedure, NULL, reinterpret_cast<DWORD_PTR>(this));
-
-	InitializeListViewColumns();
-	UpdateListViewColumnWidths();
-
-	return;
-
-	LVITEM lvi;
-	lvi.pszText = (wchar_t*)L"a value of type \"const wchar_t*\" cannot be assigned to an entity of type \"LPWSTR\"";
-	lvi.mask = LVIF_TEXT;
-	lvi.state = lvi.iSubItem = lvi.stateMask = 0;
-	ListView_InsertItem(m_hWndSelf, &lvi);
+	this->WriteLine(L"Hello, world!");
 }
 
-void Output::InitializeListViewColumns(void)
+void Output::Clear(void)
 {
-	wchar_t szText[256];
+	SetWindowText(m_hWndSelf, L"");
+}
 
-	LVCOLUMN lvc;
-	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+static void AppendText(HWND hWnd, const wchar_t* text)
+{
+	int iOutLength = GetWindowTextLength(hWnd) + lstrlen(text) + 1;
 
-	for (int iCol = 0; iCol < sizeof(columns) / sizeof(ListViewColumn); ++iCol)
+	wchar_t* buffer = (wchar_t*)GlobalAlloc(GPTR, iOutLength * sizeof(wchar_t));
+
+	if (buffer)
 	{
-		lvc.iSubItem = iCol;
-		lvc.pszText = szText;
-		lvc.cx = 0;
-		lvc.fmt = LVCFMT_LEFT;
-		lstrcpy(szText, columns[iCol].lpszName);
+		GetWindowText(hWnd, buffer, iOutLength);
+		wcscat_s(buffer, iOutLength, text);
+		SetWindowText(hWnd, buffer);
 
-		ListView_InsertColumn(m_hWndSelf, iCol, &lvc);
+		GlobalFree(buffer);
 	}
 }
 
-void Output::UpdateListViewColumnWidths(void)
+void Output::WriteLine(const wchar_t* lpszFormat, ...)
 {
-	const float dpiScale = Utility::GetScaleForDPI(m_hWndParent);
-
-	for (int iCol = 0; iCol < sizeof(columns) / sizeof(ListViewColumn); ++iCol)
-	{
-		ListView_SetColumnWidth(m_hWndSelf, iCol, static_cast<int>(columns[iCol].cx * dpiScale));
-	}
+	Write(lpszFormat);
+	AppendText(m_hWndSelf, L"\r\n");
 }
 
-void Output::OnDPIChange(void)
+void Output::Write(const wchar_t* lpszFormat, ...)
 {
-	UpdateListViewColumnWidths();
+	va_list arglist;
+	va_start(arglist, lpszFormat);
+
+	size_t size = lstrlen(lpszFormat) * 2;
+	wchar_t* buffer = new wchar_t[size];
+	
+	StringCbVPrintf(
+		buffer,
+		size * sizeof(wchar_t),
+		lpszFormat,
+		arglist
+	);
+
+	AppendText(m_hWndSelf, buffer);
+
+	delete[] buffer;
+
+	va_end(arglist);
 }

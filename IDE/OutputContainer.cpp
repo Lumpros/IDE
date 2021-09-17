@@ -40,6 +40,7 @@ OutputContainer::~OutputContainer(void)
 {
 	SAFE_DELETE_PTR(m_pErrorListButton);
 	SAFE_DELETE_PTR(m_pOutputButton);
+	SAFE_DELETE_PTR(m_pErrorList);
 	SAFE_DELETE_PTR(m_pOutput);
 }
 
@@ -114,7 +115,7 @@ HRESULT OutputContainer::InitializeOutputWindow(HINSTANCE hInstance)
 	m_hWndSelf = CreateWindow(
 		OUTPUT_CLASS,
 		nullptr,
-		WS_CHILD | WS_VISIBLE,
+		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
 		0, 0, 0, 0,
 		m_hWndParent,
 		nullptr,
@@ -134,6 +135,7 @@ HRESULT OutputContainer::InitializeOutputWindow(HINSTANCE hInstance)
 	bInfo.lpszText = L"Error List";
 	m_pErrorListButton = new ODButton(m_hWndSelf, bInfo, IDC_ERROR_LIST_BUTTON);
 
+	m_pErrorList = new ErrorList(m_hWndSelf);
 	m_pOutput = new Output(m_hWndSelf);
 
 	return S_OK;
@@ -173,6 +175,9 @@ LRESULT OutputContainer::WindowProcedure(HWND hWnd, UINT message, WPARAM wParam,
 
 	case WM_NOTIFY:
 		return OnNotify(hWnd, lParam);
+
+	case WM_CTLCOLOREDIT:
+		return reinterpret_cast<LRESULT>(GetStockObject(WHITE_BRUSH));
 	}
 
 	return DefWindowProc(hWnd, message, wParam, lParam);
@@ -206,13 +211,20 @@ LRESULT OutputContainer::OnDrawItem(HWND hWnd, LPARAM lParam)
 
 LRESULT OutputContainer::OnCommand(HWND hWnd, WPARAM wParam)
 {
-	switch (LOWORD(wParam))
+	if (m_pErrorList && m_pOutput)
 	{
-	case IDC_ERROR_LIST_BUTTON:
-		break;
+		switch (LOWORD(wParam))
+		{
+		case IDC_ERROR_LIST_BUTTON:
+			m_pErrorList->Show();
+			m_pOutput->Hide();
+			break;
 
-	case IDC_OUTPUT_BUTTON:
-		break;
+		case IDC_OUTPUT_BUTTON:
+			m_pErrorList->Hide();
+			m_pOutput->Show();
+			break;
+		}
 	}
 	
 	return 0;
@@ -272,19 +284,25 @@ LRESULT OutputContainer::OnWindowPosChanged(HWND hWnd, LPARAM lParam)
 		RestrictButtonSectorSize(pWindowPos, rcParent, pAppWindow->GetStatusBar());
 		ResizeWorkArea(pWorkArea, pExplorer, pWindowPos, rcParent);
 
-		if (m_pOutput)
-		{
-			const int iMinimumHeight = GetMinimumHeight();
-
-			m_pOutput->SetPos(0, iMinimumHeight);
-			m_pOutput->SetSize(pWindowPos->cx, pWindowPos->cy - iMinimumHeight);
-		}
-
+		ResizeDisplayWindow(m_pErrorList, pWindowPos);
+		ResizeDisplayWindow(m_pOutput, pWindowPos);
+		
 		m_rcSelf.right = pWindowPos->cx;
 		m_rcSelf.bottom = pWindowPos->cy;
 	}
 
 	return 0;
+}
+
+void OutputContainer::ResizeDisplayWindow(Window* pWindow, LPWINDOWPOS pWindowPos)
+{
+	if (pWindow)
+	{
+		const int iMinimumHeight = GetMinimumHeight();
+
+		pWindow->SetPos(0, iMinimumHeight);
+		pWindow->SetSize(pWindowPos->cx, pWindowPos->cy - iMinimumHeight);
+	}
 }
 
 void OutputContainer::RestrictButtonSectorSize(LPWINDOWPOS pWindowPos, const RECT& rcParent, StatusBar* pStatusBar)

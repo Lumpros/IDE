@@ -39,6 +39,8 @@ WorkArea::~WorkArea(void)
 	}
 
 	m_Tabs.clear();
+
+	SAFE_DELETE_GDIOBJ(hBkFont);
 }
 
 static HRESULT RegisterSourceEditorWindowClass(HINSTANCE hInstance)
@@ -51,11 +53,12 @@ static HRESULT RegisterSourceEditorWindowClass(HINSTANCE hInstance)
 		ZeroMemory(&wcex, sizeof(WNDCLASSEX));
 		wcex.cbSize = sizeof(wcex);
 		wcex.lpszClassName = SOURCE_EDITOR_CLASS;
-		wcex.hbrBackground = reinterpret_cast<HBRUSH>(GetStockObject(GRAY_BRUSH));
+		wcex.hbrBackground = reinterpret_cast<HBRUSH>(GetStockObject(LTGRAY_BRUSH));
 		wcex.hInstance = hInstance;
 		wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
 		wcex.lpfnWndProc = ::SourceEditorWindowProcedure;
 		wcex.cbWndExtra = sizeof(WorkArea*);
+		wcex.style = CS_HREDRAW | CS_VREDRAW;
 
 		if (!RegisterClassEx(&wcex))
 			return E_FAIL;
@@ -84,20 +87,29 @@ HRESULT WorkArea::InitializeSourceEditorWindow(HINSTANCE hInstance)
 		return E_FAIL;
 	}
 
-	SourceTab* pSourceTab = new SourceTab(m_hWndSelf);
-	pSourceTab->SetName(L"main.c");
-	pSourceTab->Select();
-	InsertSourceTab(pSourceTab);
-
-	pSourceTab = new SourceTab(m_hWndSelf);
-	pSourceTab->SetName(L"app.h");
-	InsertSourceTab(pSourceTab);
-
-	pSourceTab = new SourceTab(m_hWndSelf);
-	pSourceTab->SetName(L"app.c");
-	InsertSourceTab(pSourceTab);
+	this->UpdateBackgroundFont();
 
 	return S_OK;
+}
+
+void WorkArea::UpdateBackgroundFont(void)
+{
+	SAFE_DELETE_GDIOBJ(hBkFont);
+
+	int iFontHeight = static_cast<int>(18 * Utility::GetScaleForDPI(m_hWndSelf));
+
+	hBkFont = CreateFont(
+		iFontHeight,
+		0, 0, 0,
+		FW_NORMAL,
+		TRUE,
+		FALSE,
+		FALSE,
+		0, 0, 0, 
+		ANTIALIASED_QUALITY,
+		0,
+		L"Sefoe UI"
+	);
 }
 
 void WorkArea::InsertSourceTab(SourceTab* pSourceTab)
@@ -142,6 +154,7 @@ void WorkArea::OnDPIChanged(void)
 		}
 	}
 	
+	this->UpdateBackgroundFont();
 }
 
 void WorkArea::UnselectAllTabs(void)
@@ -156,6 +169,9 @@ LRESULT WorkArea::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 {
 	switch (uMsg)
 	{
+	case WM_PAINT:
+		return OnPaint(hWnd);
+
 	case WM_SIZE:
 		return OnSize(hWnd, lParam);
 
@@ -164,6 +180,23 @@ LRESULT WorkArea::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 	}
 
 	return DefWindowProc(hWnd, uMsg, wParam, lParam);
+}
+
+LRESULT WorkArea::OnPaint(HWND hWnd)
+{
+	PAINTSTRUCT ps;
+	HDC hDC = BeginPaint(hWnd, &ps);
+
+	SelectObject(hDC, hBkFont);
+
+	if (m_Tabs.empty())
+	{
+		SetBkMode(hDC, TRANSPARENT);
+		Utility::DrawTextCentered(hDC, m_rcSelf, L"Opened files are shown here");
+	}
+		
+	EndPaint(hWnd, &ps);
+	return 0;
 }
 
 LRESULT WorkArea::OnSize(HWND hWnd, LPARAM lParam)
@@ -238,21 +271,32 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 
 void WorkArea::SelectFileFromName(wchar_t* lpszName)
 {
+	/* Look through opened tabs */
+	/* If one of them has the same name, select it */
 	for (size_t i = 0; i < m_Tabs.size(); ++i)
 	{
+		LPCWSTR lpName = m_Tabs[i]->GetName();
+
 		if (lstrcmp(m_Tabs[i]->GetName(), lpszName) == 0)
 		{
 			m_Tabs[m_SourceIndex]->Unselect();
 			m_Tabs[i]->Select();
 			m_SourceIndex = i;
+			delete[] lpName;
 			return;
 		}
+
+		delete[] lpName;
 	}
 
 	const bool areTabsOpened = (m_Tabs.size() > 0);
 
+	/* Look through closed tabs*/
+	/* If it's found, open it and select it*/
 	for (size_t i = 0; i < m_ClosedTabs.size(); ++i)
 	{
+		LPCWSTR lpName = m_ClosedTabs[i]->GetName();
+
 		if (lstrcmp(m_ClosedTabs[i]->GetName(), lpszName) == 0)
 		{
 			if (areTabsOpened)
@@ -266,9 +310,29 @@ void WorkArea::SelectFileFromName(wchar_t* lpszName)
 			m_ClosedTabs[i]->Select();
 			m_ClosedTabs[i]->SetPos(m_ClosedTabs[i]->GetRect().right * m_SourceIndex, 0);
 			m_ClosedTabs.erase(m_ClosedTabs.begin() + i);
-			break;
+			delete[] lpName;
+			return;
 		}
+
+		delete[] lpName;
 	}
+
+	/* if it was neither open nor closed, create it and select it*/
+	//CreateTab(lpszName);
+	CreateTab(lpszName);
+}
+
+void WorkArea::CreateTab(wchar_t* lpszFileName)
+{
+	if (m_SourceIndex != -1)
+		m_Tabs[m_SourceIndex]->Unselect();
+
+	SourceTab* pSourceTab = new SourceTab(m_hWndSelf);
+	pSourceTab->SetName(lpszFileName);
+	InsertSourceTab(pSourceTab);
+
+	m_Tabs.back()->Select();
+	m_SourceIndex = m_Tabs.size() - 1;
 }
 
 int WorkArea::GetSelectedTabIndex(void) const

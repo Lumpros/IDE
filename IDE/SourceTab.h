@@ -43,6 +43,12 @@ public:
 	void SetName(LPCWSTR lpszName);
 	void HideCloseButton(void) const;
 
-	const wchar_t* GetName(void) const { return m_sInfo.lpszFileName; }
+	/* Must be deleted by the caller */
+	const wchar_t* GetName(void) const { 
+		int nMaxCount = GetWindowTextLength(m_hWndSelf) + 1;
+		LPWSTR lpName = new wchar_t[nMaxCount];
+		GetWindowText(m_hWndSelf, lpName, nMaxCount);
+		return lpName;
+	}
 };
 

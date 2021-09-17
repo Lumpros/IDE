@@ -24,4 +24,5 @@ namespace Utility
 	extern int GetStandardFontHeight(HWND hWnd);
 	extern void UpdateFont(HWND hWnd);
 	extern std::wstring GetFileExtension(const wchar_t* lpszFileName);
+	extern void DrawTextCentered(HDC hDC, const RECT& rc, const wchar_t* lpszText);
 }

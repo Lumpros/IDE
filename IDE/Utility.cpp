@@ -106,3 +106,18 @@ std::wstring Utility::GetFileExtension(const wchar_t* lpszFileName)
 
 	return extension;
 }
+
+void Utility::DrawTextCentered(HDC hDC, const RECT& rc, const wchar_t* lpszText)
+{
+	const int length = lstrlen(lpszText);
+	SIZE size;
+	GetTextExtentPoint32(hDC, lpszText, length, &size);
+
+	TextOut(
+		hDC,
+		(rc.right - size.cx) / 2,
+		(rc.bottom - size.cy) / 2,
+		lpszText,
+		length
+	);
+}

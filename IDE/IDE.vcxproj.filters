@@ -57,10 +57,13 @@
     <ClCompile Include="ODButton.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Output.cpp">
+    <ClCompile Include="ErrorList.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="StatusBar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Output.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -107,10 +110,13 @@
     <ClInclude Include="ODButton.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Output.h">
+    <ClInclude Include="ErrorList.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="StatusBar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Output.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

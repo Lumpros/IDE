@@ -56,15 +56,25 @@ static LRESULT OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		++iLineHeight;
 	}
 
+	RECT rcClient;
+	GetClientRect(hWnd, &rcClient);
+
+	int whiteRectHeight = min(rcClient.bottom, iLineCount * iLineHeight);
+
+	Rectangle(hDC, x_offset, y, left_margin, whiteRectHeight);
+
 	for (int i = SendMessage(hWnd, EM_GETFIRSTVISIBLELINE, 0, 0); i < iLineCount; ++i)
 	{
-		Rectangle(hDC, x_offset, y, left_margin, y + iLineHeight);
-
 		wchar_t buf[NUMBER_BUFSIZ];
 		_itow_s(i + 1, buf, NUMBER_BUFSIZ, BASE10);
 		TextOut(hDC, x_offset, y, buf, lstrlen(buf));
 
 		y += iLineHeight;
+
+		if (!PtInRect(&rcClient, { 0, y }))
+		{
+			break;
+		}
 	}
 
 	ReleaseDC(hWnd, hDC);

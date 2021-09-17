@@ -11,12 +11,17 @@ private:
 	HRESULT InitializeSourceEditorWindow(HINSTANCE hInstance);
 	LRESULT OnSize(HWND hWnd, LPARAM lParam);
 	LRESULT OnCloseTab(HWND hWnd, LPARAM lParam);
+	LRESULT OnPaint(HWND hWnd);
 
-	size_t m_SourceIndex = 0;
+	HFONT hBkFont = nullptr;
+
+	int m_SourceIndex = 0;
 	std::vector<SourceTab*> m_Tabs;
 	std::vector<SourceTab*> m_ClosedTabs;
 
+	void UpdateBackgroundFont(void);
 	void InsertSourceTab(SourceTab* pSourceTab);
+	void CreateTab(wchar_t* lpszFileName);
 
 	int GetSelectedTabIndex(void) const;
 

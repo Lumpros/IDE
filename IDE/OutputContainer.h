@@ -6,6 +6,7 @@
 #include "Explorer.h"
 #include "StatusBar.h"
 #include "WorkArea.h"
+#include "ErrorList.h"
 
 class OutputContainer : public Window
 {
@@ -24,11 +25,13 @@ private:
 	void SetButtonPositions(void);
 	void RestrictButtonSectorSize(LPWINDOWPOS pWindowPos, const RECT& rcParent, StatusBar* pStatusBar);
 	void ResizeWorkArea(WorkArea* pWorkArea, Explorer* pExplorer, LPWINDOWPOS pWindowPos, const RECT& rcParent);
+	void ResizeDisplayWindow(Window* pWindow, LPWINDOWPOS pWindowPos);
 
 	int GetMinimumHeight(void);
 
 	ODButton* m_pOutputButton = nullptr;
 	ODButton* m_pErrorListButton = nullptr;
+	ErrorList* m_pErrorList = nullptr;
 	Output* m_pOutput = nullptr;
 
 public:

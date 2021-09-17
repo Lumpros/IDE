@@ -4,13 +4,11 @@
 
 class Output : public Window
 {
-private:
-	void InitializeListViewColumns(void);
-	void UpdateListViewColumnWidths(void);
-
 public:
 	explicit Output(HWND hParentWindow);
 
-	void OnDPIChange(void);
+	void Clear(void);
+	void WriteLine(const wchar_t* lpszFormat, ...);
+	void Write(const wchar_t* lpszFormat, ...);
 };
 

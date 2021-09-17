@@ -95,7 +95,6 @@ HRESULT SourceTab::InitializeSourceTabWindow(HINSTANCE hInstance)
 
 void SourceTab::SetName(LPCWSTR lpszName)
 {
-	m_sInfo.lpszFileName = lpszName;
 	SetWindowText(m_hWndSelf, lpszName);
 }
 
@@ -150,7 +149,7 @@ LRESULT SourceTab::OnPaint(HWND hWnd)
 
 	else
 	{
-		crBackground = RGB(210, 210, 210);
+		crBackground = RGB(192, 192, 192);
 	}
 
 	SelectObject(hDC, GetStockObject(DC_BRUSH));
@@ -160,18 +159,13 @@ LRESULT SourceTab::OnPaint(HWND hWnd)
 	Rectangle(hDC, 0, 0, m_rcSelf.right, m_rcSelf.bottom);
 
 	SelectObject(hDC, Utility::GetStandardFont());
-
-	const int length = lstrlen(m_sInfo.lpszFileName);
-	SIZE size;
-	GetTextExtentPoint32(hDC, m_sInfo.lpszFileName, length, &size);
 	SetBkMode(hDC, TRANSPARENT);
-	TextOut(
-		hDC,
-		(m_rcSelf.right - size.cx) / 2,
-		(m_rcSelf.bottom - size.cy) / 2,
-		m_sInfo.lpszFileName,
-		length
-	);
+
+	int nMaxCount = GetWindowTextLength(hWnd) + 1;
+	LPWSTR lpWindowText = new wchar_t[nMaxCount];
+	GetWindowText(hWnd, lpWindowText, nMaxCount);
+
+	Utility::DrawTextCentered(hDC, m_rcSelf, lpWindowText);
 
 	EndPaint(hWnd, &ps);
 	return 0;

@@ -146,6 +146,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="AppWindow.cpp" />
     <ClCompile Include="ODButton.cpp" />
+    <ClCompile Include="ErrorList.cpp" />
     <ClCompile Include="Output.cpp" />
     <ClCompile Include="OutputContainer.cpp" />
     <ClCompile Include="SourceEdit.cpp" />
@@ -163,6 +164,7 @@
     <ClInclude Include="Explorer.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="ODButton.h" />
+    <ClInclude Include="ErrorList.h" />
     <ClInclude Include="Output.h" />
     <ClInclude Include="OutputContainer.h" />
     <ClInclude Include="resource.h" />
