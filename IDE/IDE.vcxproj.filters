@@ -51,10 +51,16 @@
     <ClCompile Include="SourceEdit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Output.cpp">
+    <ClCompile Include="OutputContainer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ODButton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Output.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="StatusBar.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -95,10 +101,16 @@
     <ClInclude Include="SourceEdit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Output.h">
+    <ClInclude Include="OutputContainer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ODButton.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Output.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="StatusBar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

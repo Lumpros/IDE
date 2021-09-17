@@ -4,6 +4,8 @@
 #include "resource.h"
 #include "ColorFormatParser.h"
 
+#include <CommCtrl.h>
+
 #define APP_WINDOW_CLASS L"IDEAppWindow"
 
 static HRESULT RegisterAppWindowClass(HINSTANCE hInstance);
@@ -13,7 +15,8 @@ AppWindow::~AppWindow(void)
 {
 	SAFE_DELETE_PTR(m_pExplorer);
 	SAFE_DELETE_PTR(m_pWorkArea);
-	SAFE_DELETE_PTR(m_pOutput);
+	SAFE_DELETE_PTR(m_pOutputContainer);
+	SAFE_DELETE_PTR(m_pStatusBar);
 }
 
 void AppWindow::Initialize(HINSTANCE hInstance)
@@ -68,7 +71,7 @@ HRESULT AppWindow::InitializeWindow(HINSTANCE hInstance)
 		WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
 		CW_USEDEFAULT,
 		CW_USEDEFAULT,
-		1280, 960,
+		1200, 800,
 		nullptr,
 		nullptr,
 		hInstance,
@@ -108,22 +111,23 @@ HRESULT AppWindow::InitializeComponents(void)
 	HRESULT hr = E_FAIL;
 
 	m_pWorkArea = new WorkArea(m_hWndSelf);
+	m_pStatusBar = new StatusBar(m_hWndSelf);
 
-	if (m_pWorkArea)
+	if (m_pWorkArea && m_pStatusBar)
 	{
 		m_pExplorer = new Explorer(m_hWndSelf);
 		
 		if (m_pExplorer)
 		{
 			m_pExplorer->SetSize(static_cast<int>(250 * Utility::GetScaleForDPI(m_hWndSelf)), 0);
-			m_pWorkArea->SetSize(m_rcSelf.right - m_pExplorer->GetRect().right - 6, m_rcSelf.bottom * 2 / 3);
+			//m_pWorkArea->SetSize(m_rcSelf.right - m_pExplorer->GetRect().right - 6, m_rcSelf.bottom * 2 / 3);
 
-			m_pOutput = new Output(m_hWndSelf);
+			m_pOutputContainer = new OutputContainer(m_hWndSelf);
 
-			if (m_pOutput)
+			if (m_pOutputContainer)
 			{
-				m_pOutput->SetPos(m_pExplorer->GetRect().right + 3, m_rcSelf.bottom * 3 / 4 + 3);
-				m_pOutput->SetSize(m_rcSelf.right - m_pExplorer->GetRect().right - 6, m_rcSelf.bottom / 4 - 3);
+				m_pOutputContainer->SetPos(m_pExplorer->GetRect().right + 3, m_rcSelf.bottom * 3 / 4 + 3);
+				m_pOutputContainer->SetSize(m_rcSelf.right - m_pExplorer->GetRect().right - 6, m_rcSelf.bottom / 4 - 3);
 
 				hr = S_OK;
 			}
@@ -155,21 +159,31 @@ LRESULT AppWindow::OnSize(HWND hWnd, LPARAM lParam)
 	m_rcSelf.right = LOWORD(lParam);
 	m_rcSelf.bottom = HIWORD(lParam);
 
-	if (m_pExplorer)
+	if (m_pStatusBar)
 	{
-		const int iExplorerWidth = m_pExplorer->GetRect().right;
-		const int iWorkAreaHeight = m_pWorkArea->GetRect().bottom;
+		SendMessage(m_pStatusBar->GetHandle(), WM_SIZE, 0, 0);
 
-		m_pExplorer->SetSize(iExplorerWidth, m_rcSelf.bottom);
+		RECT rcStatusBar;
+		GetClientRect(m_pStatusBar->GetHandle(), &rcStatusBar);
 
-		if (m_pWorkArea)
+		const int iStatusBarHeight = rcStatusBar.bottom;
+
+		if (m_pExplorer)
 		{
-			m_pWorkArea->SetPos(iExplorerWidth + 3, 0);
+			const int iExplorerWidth = m_pExplorer->GetRect().right;
+			const int iWorkAreaHeight = m_pWorkArea->GetRect().bottom;
 
-			if (m_pOutput)
+			m_pExplorer->SetSize(iExplorerWidth, m_rcSelf.bottom - iStatusBarHeight);
+
+			if (m_pWorkArea)
 			{
-				m_pOutput->SetPos(iExplorerWidth + 3, m_rcSelf.bottom - m_pOutput->GetRect().bottom);
-				m_pOutput->SetSize(m_rcSelf.right - iExplorerWidth - 3, m_pOutput->GetRect().bottom);
+				m_pWorkArea->SetPos(iExplorerWidth + 3, 0);
+
+				if (m_pOutputContainer)
+				{
+					m_pOutputContainer->SetPos(iExplorerWidth + 3, m_rcSelf.bottom - m_pOutputContainer->GetRect().bottom - iStatusBarHeight);
+					m_pOutputContainer->SetSize(m_rcSelf.right - iExplorerWidth - 3, m_pOutputContainer->GetRect().bottom);
+				}
 			}
 		}
 	}
@@ -179,6 +193,10 @@ LRESULT AppWindow::OnSize(HWND hWnd, LPARAM lParam)
  
 LRESULT AppWindow::OnGetMinMax(HWND hWnd, LPARAM lParam)
 {
+	LPMINMAXINFO mmi = reinterpret_cast<LPMINMAXINFO>(lParam);
+
+	mmi->ptMinTrackSize = { 300, 300 };
+
 	return 0;
 }
 

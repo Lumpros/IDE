@@ -19,7 +19,6 @@ HTREEITEM AddItemToTree(HWND hwndTV, LPTSTR lpszItem, int nLevel)
 	static HTREEITEM hPrev = (HTREEITEM)TVI_FIRST;
 	static HTREEITEM hPrevRootItem = NULL;
 	static HTREEITEM hPrevLev2Item = NULL;
-	HTREEITEM hti;
 
 	tvi.mask = TVIF_TEXT | TVIF_PARAM;
 
@@ -227,12 +226,12 @@ LRESULT Explorer::OnSize(HWND hWnd, LPARAM lParam)
 	{
 		pWorkArea->SetPos(m_rcSelf.right + 3, 0);
 
-		Output* pOutput = pAppWindow->GetOutputWindow();
+		OutputContainer* pOutputContainer = pAppWindow->GetOutputWindow();
 
-		if (pOutput)
+		if (pOutputContainer)
 		{
-			pOutput->SetPos(m_rcSelf.right + 3, pWorkArea->GetRect().bottom + 3);
-			pOutput->SetSize(rcClient.right - m_rcSelf.right - 3, pOutput->GetRect().bottom);
+			pOutputContainer->SetPos(m_rcSelf.right + 3, pWorkArea->GetRect().bottom + 3);
+			pOutputContainer->SetSize(rcClient.right - m_rcSelf.right - 3, pOutputContainer->GetRect().bottom);
 		}
 	}
 

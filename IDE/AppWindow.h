@@ -3,7 +3,8 @@
 #include "Window.h"
 #include "Explorer.h"
 #include "WorkArea.h"
-#include "Output.h"
+#include "StatusBar.h"
+#include "OutputContainer.h"
 
 class AppWindow : public Window
 {
@@ -11,7 +12,8 @@ private:
 	HRESULT InitializeWindow(HINSTANCE hInstance);
 	Explorer* m_pExplorer = nullptr;
 	WorkArea* m_pWorkArea = nullptr;
-	Output* m_pOutput = nullptr;
+	OutputContainer* m_pOutputContainer = nullptr;
+	StatusBar* m_pStatusBar = nullptr;
 
 	LRESULT OnSize(HWND hWnd, LPARAM lParam);
 	LRESULT OnGetMinMax(HWND hWnd, LPARAM lParam);
@@ -34,8 +36,12 @@ public:
 		return m_pExplorer;
 	}
 
-	inline Output* GetOutputWindow(void) const {
-		return m_pOutput;
+	inline OutputContainer* GetOutputWindow(void) const {
+		return m_pOutputContainer;
+	}
+
+	inline StatusBar* GetStatusBar(void) const {
+		return m_pStatusBar;
 	}
 };
 

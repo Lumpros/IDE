@@ -147,7 +147,9 @@
     <ClCompile Include="AppWindow.cpp" />
     <ClCompile Include="ODButton.cpp" />
     <ClCompile Include="Output.cpp" />
+    <ClCompile Include="OutputContainer.cpp" />
     <ClCompile Include="SourceEdit.cpp" />
+    <ClCompile Include="StatusBar.cpp" />
     <ClCompile Include="WorkArea.cpp" />
     <ClCompile Include="SourceTab.cpp" />
     <ClCompile Include="Utility.cpp" />
@@ -162,8 +164,10 @@
     <ClInclude Include="Logger.h" />
     <ClInclude Include="ODButton.h" />
     <ClInclude Include="Output.h" />
+    <ClInclude Include="OutputContainer.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="SourceEdit.h" />
+    <ClInclude Include="StatusBar.h" />
     <ClInclude Include="WorkArea.h" />
     <ClInclude Include="SourceTab.h" />
     <ClInclude Include="Utility.h" />

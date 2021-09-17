@@ -204,5 +204,5 @@ BOOLEAN ODButton::IsClicked(void) const
 void ODButton::SetRect(const RECT& rect)
 {
 	this->rect = rect;
-	SetWindowPos(hWnd, NULL, rect.left, rect.top, rect.right, rect.bottom, SWP_NOZORDER);
+	SetWindowPos(hWnd, NULL, rect.left, rect.top, rect.right, rect.bottom, SWP_NOZORDER | SWP_NOCOPYBITS | SWP_NOREDRAW);
 }
