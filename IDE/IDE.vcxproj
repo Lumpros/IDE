@@ -88,6 +88,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -102,9 +103,10 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -139,45 +141,45 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Application.cpp" />
-    <ClCompile Include="ColorFormatParser.cpp" />
-    <ClCompile Include="Explorer.cpp" />
-    <ClCompile Include="Logger.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="AppWindow.cpp" />
-    <ClCompile Include="ODButton.cpp" />
-    <ClCompile Include="ErrorList.cpp" />
-    <ClCompile Include="Output.cpp" />
-    <ClCompile Include="OutputContainer.cpp" />
-    <ClCompile Include="SourceEdit.cpp" />
-    <ClCompile Include="StatusBar.cpp" />
-    <ClCompile Include="WorkArea.cpp" />
-    <ClCompile Include="SourceTab.cpp" />
-    <ClCompile Include="Utility.cpp" />
-    <ClCompile Include="Window.cpp" />
-    <ClCompile Include="Wordifier.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Application.h" />
-    <ClInclude Include="AppWindow.h" />
-    <ClInclude Include="ColorFormatParser.h" />
-    <ClInclude Include="Explorer.h" />
-    <ClInclude Include="Logger.h" />
-    <ClInclude Include="ODButton.h" />
-    <ClInclude Include="ErrorList.h" />
-    <ClInclude Include="Output.h" />
-    <ClInclude Include="OutputContainer.h" />
-    <ClInclude Include="resource.h" />
-    <ClInclude Include="SourceEdit.h" />
-    <ClInclude Include="StatusBar.h" />
-    <ClInclude Include="WorkArea.h" />
-    <ClInclude Include="SourceTab.h" />
-    <ClInclude Include="Utility.h" />
-    <ClInclude Include="Window.h" />
-    <ClInclude Include="Wordifier.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="IDE.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="win32\Application.h" />
+    <ClInclude Include="win32\AppWindow.h" />
+    <ClInclude Include="win32\ColorFormatParser.h" />
+    <ClInclude Include="win32\ErrorList.h" />
+    <ClInclude Include="win32\Explorer.h" />
+    <ClInclude Include="win32\Logger.h" />
+    <ClInclude Include="win32\ODButton.h" />
+    <ClInclude Include="win32\Output.h" />
+    <ClInclude Include="win32\OutputContainer.h" />
+    <ClInclude Include="win32\resource.h" />
+    <ClInclude Include="win32\SourceEdit.h" />
+    <ClInclude Include="win32\SourceTab.h" />
+    <ClInclude Include="win32\StatusBar.h" />
+    <ClInclude Include="win32\Utility.h" />
+    <ClInclude Include="win32\Window.h" />
+    <ClInclude Include="win32\Wordifier.h" />
+    <ClInclude Include="win32\WorkArea.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="win32\Application.cpp" />
+    <ClCompile Include="win32\AppWindow.cpp" />
+    <ClCompile Include="win32\ColorFormatParser.cpp" />
+    <ClCompile Include="win32\ErrorList.cpp" />
+    <ClCompile Include="win32\Explorer.cpp" />
+    <ClCompile Include="win32\Logger.cpp" />
+    <ClCompile Include="win32\main.cpp" />
+    <ClCompile Include="win32\ODButton.cpp" />
+    <ClCompile Include="win32\Output.cpp" />
+    <ClCompile Include="win32\OutputContainer.cpp" />
+    <ClCompile Include="win32\SourceEdit.cpp" />
+    <ClCompile Include="win32\SourceTab.cpp" />
+    <ClCompile Include="win32\StatusBar.cpp" />
+    <ClCompile Include="win32\Utility.cpp" />
+    <ClCompile Include="win32\Window.cpp" />
+    <ClCompile Include="win32\Wordifier.cpp" />
+    <ClCompile Include="win32\WorkArea.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
