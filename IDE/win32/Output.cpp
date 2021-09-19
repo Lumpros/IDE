@@ -14,7 +14,8 @@ Output::Output(HWND hParentWindow)
 	m_hWndSelf = CreateWindow(
 		MSFTEDIT_CLASS,
 		nullptr,
-		WS_CHILD | ES_READONLY,
+		WS_CHILD | ES_READONLY | ES_MULTILINE | ES_AUTOVSCROLL
+		| WS_VSCROLL | WS_HSCROLL,
 		0, 0, 0, 0,
 		m_hWndParent,
 		nullptr,
@@ -39,11 +40,12 @@ static void AppendText(HWND hWnd, const wchar_t* text)
 		GetWindowText(hWnd, buffer, iOutLength);
 		wcscat_s(buffer, iOutLength, text);
 		SetWindowText(hWnd, buffer);
-
+		
 		GlobalFree(buffer);
 	}
 }
 
+// wrong lol
 void Output::WriteLine(const wchar_t* lpszFormat, ...)
 {
 	Write(lpszFormat);
@@ -55,7 +57,7 @@ void Output::Write(const wchar_t* lpszFormat, ...)
 	va_list arglist;
 	va_start(arglist, lpszFormat);
 
-	size_t size = lstrlen(lpszFormat) * 2;
+	size_t size = lstrlen(lpszFormat) * 10 + 1;
 	wchar_t* buffer = new wchar_t[size];
 	
 	StringCbVPrintf(
@@ -64,7 +66,7 @@ void Output::Write(const wchar_t* lpszFormat, ...)
 		lpszFormat,
 		arglist
 	);
-
+	
 	AppendText(m_hWndSelf, buffer);
 
 	delete[] buffer;

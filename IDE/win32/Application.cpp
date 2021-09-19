@@ -1,13 +1,14 @@
 #include "Application.h"
 #include "Logger.h"
 #include "Explorer.h"
+#include "resource.h"
 
 Application::Application(HINSTANCE hInstance)
 {
-
+	m_hAccelerator = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDR_ACCELERATOR1));
 }
 
-HRESULT Application::Initialize(void)
+HRESULT Application::Initialize(LPWSTR lpCmdLine)
 {
 	HMODULE hModule = LoadLibrary(L"Msftedit.dll");
 
@@ -17,7 +18,7 @@ HRESULT Application::Initialize(void)
 		return E_FAIL;
 	}
 
-	m_AppWindow.Initialize(GetModuleHandle(NULL));
+	m_AppWindow.Initialize(GetModuleHandle(NULL), lpCmdLine);
 
 	return S_OK;
 }
@@ -26,9 +27,14 @@ void Application::Run(void)
 {
 	MSG msg;
 
+	HWND hWnd = m_AppWindow.GetHandle();
+
 	while (GetMessage(&msg, NULL, 0, 0))
 	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+		if (!TranslateAccelerator(hWnd, m_hAccelerator, &msg))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
 	}
 }

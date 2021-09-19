@@ -23,5 +23,7 @@ public:
 	/* This is done so the program will try to identify the word as something else */
 	/* e.g. a variable to use a different color */
 	CRSTATUS GetKeywordColor(const wchar_t* lpszKeyword);
+
+	int GetMaxLength(void) const;
 };
 

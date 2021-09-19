@@ -114,9 +114,20 @@ void WorkArea::UpdateBackgroundFont(void)
 
 void WorkArea::InsertSourceTab(SourceTab* pSourceTab)
 {
-	int iTabWidth = static_cast<int>(80 * Utility::GetScaleForDPI(m_hWndParent));
+	const wchar_t* pTabName = pSourceTab->GetName();
 
-	const int iTabX = iTabWidth * m_Tabs.size();
+	HDC hDC = GetDC(NULL);
+	SIZE size;
+	SelectObject(hDC, Utility::GetStandardFont());
+	GetTextExtentPoint32(hDC, pTabName, lstrlen(pTabName), &size);
+	int iTabWidth = static_cast<int>(size.cx * 2);
+	ReleaseDC(NULL, hDC);
+
+	delete[] pTabName;
+
+	int iTabX = 0;
+	for (SourceTab* pTab : m_Tabs)
+		iTabX += pTab->GetRect().right;
 
 	pSourceTab->SetPos(iTabX, 0);
 	pSourceTab->SetSize(iTabWidth, (int)(iTabHeight * Utility::GetScaleForDPI(m_hWndParent)));
@@ -275,9 +286,12 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 		}
 	}
 
+	int x_pos = 0;
+
 	for (size_t index = 0; index < m_Tabs.size(); ++index)
 	{
-		m_Tabs[index]->SetPos(iTabWidth * index, 0);
+		m_Tabs[index]->SetPos(x_pos, 0);
+		x_pos += m_Tabs[index]->GetRect().right;
 	}
 
 	return 0;
@@ -285,6 +299,8 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 
 void WorkArea::SelectFileFromName(wchar_t* lpszName)
 {
+	m_SourceIndex = this->GetSelectedTabIndex();
+
 	/* Look through opened tabs */
 	/* If one of them has the same name, select it */
 	for (size_t i = 0; i < m_Tabs.size(); ++i)
@@ -313,7 +329,7 @@ void WorkArea::SelectFileFromName(wchar_t* lpszName)
 
 		if (lstrcmp(m_ClosedTabs[i]->GetName(), lpszName) == 0)
 		{
-			if (areTabsOpened)
+			if (areTabsOpened && m_SourceIndex < m_Tabs.size())
 			{
 				m_Tabs[m_SourceIndex]->Unselect();
 			}
@@ -322,7 +338,13 @@ void WorkArea::SelectFileFromName(wchar_t* lpszName)
 			m_SourceIndex = m_Tabs.size() - 1;
 			m_ClosedTabs[i]->Show();
 			m_ClosedTabs[i]->Select();
-			m_ClosedTabs[i]->SetPos(m_ClosedTabs[i]->GetRect().right * m_SourceIndex, 0);
+
+			int x = 0;
+			for (int k = 0; k < m_Tabs.size(); ++k)
+				if (m_Tabs[k] != m_ClosedTabs[i])
+					x += m_Tabs[k]->GetRect().right;
+
+			m_ClosedTabs[i]->SetPos(x, 0);
 			m_ClosedTabs.erase(m_ClosedTabs.begin() + i);
 			delete[] lpName;
 			return;

@@ -18,13 +18,14 @@ private:
 	LRESULT OnSize(HWND hWnd, LPARAM lParam);
 	LRESULT OnGetMinMax(HWND hWnd, LPARAM lParam);
 	LRESULT OnDPIChanged(HWND hWnd, LPARAM lParam);
+	LRESULT OnCommand(HWND hWNd, WPARAM wParam);
 
 	HRESULT InitializeComponents(void);
 
 public:
 	~AppWindow(void);
 
-	void Initialize(HINSTANCE hInstance);
+	void Initialize(HINSTANCE hInstance, LPWSTR lpCmdLine);
 
 	LRESULT WindowProcedure(HWND hWnd, UINT uMessage, WPARAM wParam, LPARAM lParam);
 

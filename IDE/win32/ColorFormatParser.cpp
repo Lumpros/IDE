@@ -74,3 +74,20 @@ CRSTATUS ColorFormatParser::GetKeywordColor(const wchar_t* lpszKeyword)
 
 	return status;
 }
+
+int ColorFormatParser::GetMaxLength(void) const
+{
+	size_t max_length = 0;
+
+	for (const std::pair<std::wstring, COLORREF>& pair : m_ColorMap)
+	{
+		const size_t curr_len = pair.first.length();
+
+		if (max_length < curr_len)
+		{
+			max_length = curr_len;
+		}
+	}
+
+	return max_length;
+}

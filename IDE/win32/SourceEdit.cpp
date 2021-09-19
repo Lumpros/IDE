@@ -17,10 +17,72 @@
 static bool g_hasBeenParsed = false;
 static ColorFormatParser g_KeywordColorParser;
 
+/// <summary>
+/// When a character is entered in the edit control, checks
+/// if a keyword was written, and if so, sets the appropriate color
+/// </summary>
+/// <param name="hWnd"> Handle to the rich edit control </param>
 static LRESULT OnChar(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT result = DefSubclassProc(hWnd, WM_CHAR, wParam, lParam);
-	
+
+	DWORD dwStart, dwEnd, dwOldStart;
+	SendMessage(hWnd, EM_GETSEL, (WPARAM)&dwStart, (LPARAM)&dwEnd);
+
+	dwOldStart = dwStart;
+
+	const int max_length = g_KeywordColorParser.GetMaxLength();
+
+	wchar_t* buf = new wchar_t[max_length + 1];
+
+	int strOffset = 0;
+
+	for (int i = 0; i < max_length; ++i)
+	{
+		if (dwStart == 0)
+		{
+			break;
+		}
+
+		--dwStart;
+
+		SendMessage(hWnd, EM_SETSEL, dwStart, dwEnd);
+		SendMessage(hWnd, EM_GETSELTEXT, 0, (LPARAM)buf);
+
+		if (iswspace(buf[0]) || (iswpunct(buf[0]) && buf[0] != L'#'))
+		{
+			++dwStart;
+			strOffset = 1;
+			break;
+		}
+	}
+
+	SendMessage(hWnd, EM_SETSEL, dwStart, dwEnd);
+
+	CRSTATUS crStatus = g_KeywordColorParser.GetKeywordColor(buf + strOffset);
+
+	CHARFORMATW cf;
+	cf.cbSize = sizeof(cf);
+	cf.dwMask = CFM_COLOR;
+	cf.crTextColor = 0;
+	cf.dwEffects = 0;
+
+	if (crStatus.wasFound)
+	{
+		cf.crTextColor = crStatus.cr;
+	}
+
+	else
+	{
+		SendMessage(hWnd, EM_SETSEL, dwStart - 1, dwEnd);
+	}
+
+	SendMessage(hWnd, EM_SETCHARFORMAT, SCF_NOKBUPDATE | SCF_SELECTION, reinterpret_cast<LPARAM>(&cf));
+
+	SendMessage(hWnd, EM_SETSEL, dwOldStart, dwEnd);
+
+	delete[] buf;
+
 	return result;
 }
 
@@ -29,11 +91,21 @@ static inline int GetLineCount(HWND hWnd)
 	return SendMessage(hWnd, EM_GETLINECOUNT, NULL, NULL);
 }
 
+/// <summary>
+/// Calculates and returns the height of a standard edit control line in pixels
+/// </summary>
+/// <param name="hWnd"></param>
+/// <returns></returns>
 static int GetLineHeight(HWND hWnd)
 {
 	return Utility::GetStandardFontHeight(GetAncestor(hWnd, GA_ROOT));
 }
 
+/// <summary>
+/// Paints the background of the left margin and then
+/// paints the numbers of the current lines on screen
+/// </summary>
+/// <param name="hWnd"> Handle to the edit control </param>
 static LRESULT OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT result = DefSubclassProc(hWnd, WM_PAINT, wParam, lParam);
@@ -139,6 +211,11 @@ LRESULT CALLBACK SourceEditSubclassProcedure(HWND hWnd, UINT uMsg, WPARAM wParam
 	return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
+/// <summary>
+/// Parses the color files if it's the first time the function is called
+/// and saves them globally, then initialize the edit window 
+/// </summary>
+/// <param name="hParentWindow"> Handle to the parent window (WorkArea) </param>
 SourceEdit::SourceEdit(HWND hParentWindow)
 {
 	if (!g_hasBeenParsed)
@@ -168,11 +245,22 @@ SourceEdit::SourceEdit(HWND hParentWindow)
 	SetWindowSubclass(m_hWndSelf, SourceEditSubclassProcedure, NULL, reinterpret_cast<DWORD_PTR>(this));
 }
 
+/// <summary>
+/// Calculates the width of the left margin of the edit control
+/// in which the line numbers are displayed
+/// </summary>
+/// <param name=""></param>
+/// <returns> width of left margin </returns>
 int SourceEdit::GetLeftMargin(void) const
 {
 	return static_cast<int>(40 * Utility::GetScaleForDPI(GetAncestor(m_hWndSelf, GA_ROOT)));
 }
 
+/// <summary>
+/// Changed the size of the left margin when the DPI changes so
+/// that it will fit the resized numbers appropriately
+/// </summary>
+/// <param name=""></param>
 void SourceEdit::AdjustLeftMarginForDPI(void)
 {
 	const int iLeftMargin = GetLeftMargin();
@@ -180,6 +268,10 @@ void SourceEdit::AdjustLeftMarginForDPI(void)
 	SendMessage(m_hWndSelf, EM_SETMARGINS, EC_LEFTMARGIN, iLeftMargin);
 }
 
+/// <summary>
+/// Resizes the font of the line numbers when the dpi changes
+/// </summary>
+/// <param name=""></param>
 void SourceEdit::AdjustFontForDPI(void)
 {
 	SAFE_DELETE_GDIOBJ(m_hFont);

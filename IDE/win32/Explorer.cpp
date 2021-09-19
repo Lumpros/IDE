@@ -136,13 +136,6 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 		if (!m_hTreeWindow) {
 			Logger::Write(L"Failed to create tree view window!");
 		}
-
-		AddItemToTree(m_hTreeWindow, (wchar_t*)L"Project", 1);
-		AddItemToTree(m_hTreeWindow, (wchar_t*)L"Header Files", 2);
-		AddItemToTree(m_hTreeWindow, (wchar_t*)L"app.h", 3);
-		AddItemToTree(m_hTreeWindow, (wchar_t*)L"Source Files", 2);
-		AddItemToTree(m_hTreeWindow, (wchar_t*)L"main.c", 3);
-		AddItemToTree(m_hTreeWindow, (wchar_t*)L"app.c", 3);
 	}
 
 	return m_hWndSelf ? S_OK : E_FAIL;
@@ -176,7 +169,7 @@ LRESULT Explorer::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 			item.cchTextMax = 128;
 			item.pszText = buf;
 			TreeView_GetItem(m_hTreeWindow, &item);
-
+			
 			if (item.cChildren == 0)
 			{
 				GetAssociatedObject<AppWindow>(m_hWndParent)->GetWorkArea()->SelectFileFromName(item.pszText);
@@ -244,6 +237,80 @@ LRESULT Explorer::OnSize(HWND hWnd, LPARAM lParam)
 	SetWindowPos(m_hTreeWindow, nullptr, 0, 0, m_rcTree.right, m_rcTree.bottom, SWP_NOZORDER | SWP_NOMOVE);
 
 	return 0;
+}
+
+#define BUFFER_SIZE (MAX_PATH + 1)
+
+int depth = 1;
+
+static inline bool IsHiddenFile(const wchar_t* lpszFileName)
+{
+	return lpszFileName[0] == L'.';
+}
+
+static inline bool IsDirectory(LPWIN32_FIND_DATA pFData)
+{
+	return pFData->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
+}
+
+void Explorer::ExploreDirectory(const wchar_t* directory)
+{
+	std::wstring wstr = directory;
+	wstr.append(L"\\*");
+
+	WIN32_FIND_DATA find_data;
+	HANDLE hFind = FindFirstFile(wstr.c_str(), &find_data);
+
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		do {
+			if (!IsHiddenFile(find_data.cFileName))
+			{
+				if (IsDirectory(&find_data))
+				{
+					std::wstring new_dir = directory;
+					new_dir += L'\\';
+					new_dir += find_data.cFileName;
+					AddItemToTree(m_hTreeWindow, find_data.cFileName, depth);
+					++depth;
+					ExploreDirectory(new_dir.c_str());
+				}
+
+				else
+				{
+					AddItemToTree(m_hTreeWindow, find_data.cFileName, depth);
+				}
+			}
+		} while (FindNextFile(hFind, &find_data));
+
+		FindClose(hFind);
+
+		--depth;
+	}
+
+	else
+	{
+		Logger::Write(L"Folder \'%s\' was not found!\n", directory);
+	}
+}
+
+void Explorer::OpenProjectFolder(std::wstring folder)
+{
+	int pointer_offset = 0;
+
+	if (folder[0] == L'\"')
+	{
+		pointer_offset = 1;
+		folder.back() = L'\0';
+	}
+
+	TreeView_DeleteAllItems(m_hTreeWindow);
+
+	AddItemToTree(m_hTreeWindow, (wchar_t*)folder.c_str() + pointer_offset, 1);
+
+	depth = 2;
+
+	ExploreDirectory(folder.c_str() + pointer_offset);
 }
 
 static LRESULT OnCreate(HWND hWnd, LPARAM lParam)

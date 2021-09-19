@@ -3,8 +3,10 @@
 #include "Logger.h"
 #include "resource.h"
 #include "ColorFormatParser.h"
+#include "Wordifier.h"
 
 #include <CommCtrl.h>
+#include <ShlObj_core.h>
 
 #define APP_WINDOW_CLASS L"IDEAppWindow"
 
@@ -19,7 +21,12 @@ AppWindow::~AppWindow(void)
 	SAFE_DELETE_PTR(m_pStatusBar);
 }
 
-void AppWindow::Initialize(HINSTANCE hInstance)
+static inline bool HasArguements(LPWSTR lpCmdLine)
+{
+	return lstrlen(lpCmdLine) > 0;
+}
+
+void AppWindow::Initialize(HINSTANCE hInstance, LPWSTR lpCmdLine)
 {
 	if (FAILED(::RegisterAppWindowClass(hInstance)))
 	{
@@ -33,6 +40,12 @@ void AppWindow::Initialize(HINSTANCE hInstance)
 		Logger::Write(L"Window initialization failed!");
 		Logger::CloseOutputFile();
 		ExitProcess(1);
+	}
+
+	if (HasArguements(lpCmdLine))
+	{
+		std::wstring path = lpCmdLine;
+		m_pExplorer->OpenProjectFolder(path);
 	}
 }
 
@@ -120,7 +133,6 @@ HRESULT AppWindow::InitializeComponents(void)
 		if (m_pExplorer)
 		{
 			m_pExplorer->SetSize(static_cast<int>(250 * Utility::GetScaleForDPI(m_hWndSelf)), 0);
-			//m_pWorkArea->SetSize(m_rcSelf.right - m_pExplorer->GetRect().right - 6, m_rcSelf.bottom * 2 / 3);
 
 			m_pOutputContainer = new OutputContainer(m_hWndSelf);
 
@@ -141,6 +153,9 @@ LRESULT AppWindow::WindowProcedure(HWND hWnd, UINT uMessage, WPARAM wParam, LPAR
 {
 	switch (uMessage)
 	{
+	case WM_COMMAND:
+		return OnCommand(hWnd, wParam);
+
 	case WM_SIZE:
 		return OnSize(hWnd, lParam);
 
@@ -220,6 +235,51 @@ LRESULT AppWindow::OnDPIChanged(HWND hWnd, LPARAM lParam)
 	return 0;
 }
 
+static int CALLBACK BrowseFolderCallback(
+	HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
+{
+	if (uMsg == BFFM_INITIALIZED) {
+		LPCTSTR path = reinterpret_cast<LPCTSTR>(lpData);
+		::SendMessage(hwnd, BFFM_SETSELECTION, true, (LPARAM)path);
+	}
+	return 0;
+}
+
+LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
+{
+	switch (LOWORD(wParam))
+	{
+	case ID_FILE_OPEN_FOLDER:
+		BROWSEINFO bInfo;
+		ZeroMemory(&bInfo, sizeof(bInfo));
+		bInfo.lpszTitle = L"Select the project folder";
+		bInfo.hwndOwner = hWnd;
+		bInfo.lParam = reinterpret_cast<LPARAM>(L"C:\\");
+		bInfo.lpfn = BrowseFolderCallback;
+		bInfo.ulFlags = BIF_NEWDIALOGSTYLE;
+
+		LPITEMIDLIST pidl = SHBrowseForFolder(&bInfo);
+		if (pidl != 0)
+		{
+			wchar_t path[MAX_PATH];
+			SHGetPathFromIDList(pidl, path);
+			IMalloc* imalloc = nullptr;
+
+			if (SUCCEEDED(SHGetMalloc(&imalloc)))
+			{
+				imalloc->Free(pidl);
+				imalloc->Release();
+			}
+
+			m_pExplorer->OpenProjectFolder(path);
+		}
+
+		return 0;
+	}
+
+	return 0;
+}
+
 static LRESULT OnCreate(HWND hWnd, LPARAM lParam)
 {
 	LPCREATESTRUCT lpParams = reinterpret_cast<LPCREATESTRUCT>(lParam);
@@ -240,6 +300,8 @@ static LRESULT CALLBACK AppWindowProcedure(HWND hWnd, UINT uMessage, WPARAM wPar
 
 	case WM_CLOSE:
 		PostQuitMessage(0);
+		// This doesn't hide the window, instead it makes certain controls
+		// not turn black when the window is closed 
 		ShowWindow(hWnd, SW_HIDE);
 		return 0;
 

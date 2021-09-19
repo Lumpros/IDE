@@ -17,7 +17,6 @@ INT APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 )
 {
 	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
 	UNREFERENCED_PARAMETER(nCmdShow);
 
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
@@ -29,7 +28,7 @@ INT APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	Application m_App(hInstance);
 
-	if (FAILED(m_App.Initialize()))
+	if (FAILED(m_App.Initialize(lpCmdLine)))
 	{
 		Logger::Write(L"App initialization failed!");
 		Logger::CloseOutputFile();

@@ -1,6 +1,6 @@
 // Microsoft Visual C++ generated resource script.
 //
-#include "resource.h"
+#include "win32\resource.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////
@@ -27,7 +27,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
 
 1 TEXTINCLUDE 
 BEGIN
-    "resource.h\0"
+    "win32\\resource.h\0"
 END
 
 2 TEXTINCLUDE 
@@ -56,15 +56,13 @@ BEGIN
     BEGIN
         POPUP "New"
         BEGIN
-            MENUITEM "Project...\tCtrl+Shift+N",    ID_NEW_PROJECT
-            MENUITEM "File...\tCtrl+N",             ID_NEW_FILE
+            MENUITEM "Folder...\tCtrl+Shift+N",     ID_FILE_NEW_FOLDER
+            MENUITEM "File...\tCtrl+N",             ID_FILE_NEW_FILE
         END
         POPUP "Open"
         BEGIN
-            MENUITEM "Project...\tCtrl+Shift+O",    ID_OPEN_PROJECT
-            MENUITEM "Folder\tCtrl+Shift+Alt+O",    ID_OPEN_FILE
-            MENUITEM SEPARATOR
-            MENUITEM "File\tCtrl+O",                ID_OPEN_FILE40009
+            MENUITEM "Folder\tCtrl+Shift+Alt+O",    ID_FILE_OPEN_FOLDER
+            MENUITEM "File\tCtrl+O",                ID_FILE_OPEN_FILE
         END
         MENUITEM SEPARATOR
         MENUITEM "Close",                       ID_FILE_CLOSE
@@ -73,7 +71,7 @@ BEGIN
         MENUITEM "Save File As...",             ID_FILE_SAVEFILEAS
         MENUITEM "Save All\tCtrl+Shift+S",      ID_FILE_SAVEALL
         MENUITEM SEPARATOR
-        MENUITEM "Recent Files",                65535
+        MENUITEM "Recent Files",                ID_FILE_RECENTFILES
         MENUITEM SEPARATOR
         MENUITEM "Exit\tAlt+F4",                ID_FILE_EXIT
     END
@@ -82,6 +80,22 @@ BEGIN
     MENUITEM "&Program",                    0
     MENUITEM "&Tools",                      0
     MENUITEM "&Help",                       0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDR_ACCELERATOR1 ACCELERATORS
+BEGIN
+    "N",            ID_FILE_NEW_FOLDER,     VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "N",            ID_FILE_NEW_FILE,       VIRTKEY, CONTROL, NOINVERT
+    "O",            ID_FILE_OPEN_FOLDER,    VIRTKEY, SHIFT, CONTROL, ALT, NOINVERT
+    "O",            ID_FILE_OPEN_FILE,      VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_FILE_SAVEFILE,       VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_FILE_SAVEALL,        VIRTKEY, SHIFT, CONTROL, NOINVERT
 END
 
 #endif    // English (United Kingdom) resources

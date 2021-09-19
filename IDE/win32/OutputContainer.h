@@ -39,5 +39,7 @@ public:
 	~OutputContainer(void);
 
 	LRESULT WindowProcedure(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+	inline Output* GetOutput(void) { return m_pOutput; }
 };
 
