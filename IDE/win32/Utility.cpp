@@ -121,3 +121,15 @@ void Utility::DrawTextCentered(HDC hDC, const RECT& rc, const wchar_t* lpszText)
 		length
 	);
 }
+
+std::wstring Utility::GetFileNameFromPath(const std::wstring& path)
+{
+	const size_t position = path.find_last_of(L'\\');
+
+	if (position != std::wstring::npos)
+	{
+		return path.substr(position + 1, path.size() - position);
+	}
+
+	return path;
+}

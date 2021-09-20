@@ -141,6 +141,46 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 	return m_hWndSelf ? S_OK : E_FAIL;
 }
 
+static void GetTreeItemPath(
+	_In_  HWND hTreeWindow,
+	_Out_ std::wstring& path
+)
+{
+	path.clear();
+
+	wchar_t buf[128];
+	wchar_t file_name[128];
+
+	TVITEM item;
+	item.mask = TVIF_TEXT;
+	item.hItem = TreeView_GetSelection(hTreeWindow);
+	item.cchTextMax = 128;
+	item.pszText = file_name;
+	TreeView_GetItem(hTreeWindow, &item);
+
+	item.pszText = buf;
+	HTREEITEM hParentItem = TreeView_GetParent(hTreeWindow, item.hItem);
+
+	while (hParentItem != nullptr)
+	{
+		std::wstring new_str = L"\\";
+		item.hItem = hParentItem;
+		item.mask = TVIF_TEXT;
+		TreeView_GetItem(hTreeWindow, &item);
+
+		new_str.insert(0, item.pszText);
+
+		path.insert(0, new_str);
+
+		hParentItem = TreeView_GetParent(hTreeWindow, hParentItem);
+	}
+
+	if (!path.empty())
+	{
+		path.append(file_name);
+	}
+}
+
 LRESULT Explorer::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
@@ -155,31 +195,40 @@ LRESULT Explorer::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 		return OnSize(hWnd, lParam);
 
 	case WM_NOTIFY:
-	{
-		LPNMHDR info = reinterpret_cast<LPNMHDR>(lParam);
-		
-		if (info->code == NM_DBLCLK)
-		{
-			HTREEITEM hTreeItem = TreeView_GetSelection(m_hTreeWindow);
-			wchar_t buf[128];
-
-			TVITEM item;
-			item.hItem = hTreeItem;
-			item.mask = TVIF_TEXT | TVIF_CHILDREN;
-			item.cchTextMax = 128;
-			item.pszText = buf;
-			TreeView_GetItem(m_hTreeWindow, &item);
-			
-			if (item.cChildren == 0)
-			{
-				GetAssociatedObject<AppWindow>(m_hWndParent)->GetWorkArea()->SelectFileFromName(item.pszText);
-			}
-		}
-	}
-	return 0;
+		return OnNotify(hWnd, lParam);
 	}
 
 	return DefWindowProc(hWnd, uMsg, wParam, lParam);
+}
+
+static bool IsPathDirectory(const std::wstring& path)
+{
+	struct _stat64i32 s;
+	_wstat64i32(path.c_str(), &s);
+
+	return s.st_mode & S_IFDIR;
+}
+
+LRESULT Explorer::OnNotify(HWND hWnd, LPARAM lParam)
+{
+	LPNMHDR info = reinterpret_cast<LPNMHDR>(lParam);
+
+	if (info->code == NM_DBLCLK)
+	{
+		std::wstring selection_path;
+		::GetTreeItemPath(m_hTreeWindow, selection_path);
+
+		if (!selection_path.empty() && !IsPathDirectory(selection_path))
+		{
+			GetAssociatedObject<AppWindow>(m_hWndParent)
+				->GetWorkArea()
+				->SelectFileFromName(
+					const_cast<wchar_t*>(selection_path.c_str())
+				);
+		}
+	}
+
+	return 0;
 }
 
 LRESULT Explorer::OnNCHitTest(HWND hWnd, WPARAM wParam, LPARAM lParam)

@@ -18,6 +18,7 @@ inline T* GetAssociatedObject(HWND hWnd)
 namespace Utility
 {
 	extern void CenterWindowRelativeToParent(HWND hWnd);
+	extern std::wstring GetFileNameFromPath(const std::wstring& path);
 	extern bool IsNumber(const wchar_t* lpszText);
 	extern float GetScaleForDPI(HWND hWnd);
 	extern HFONT GetStandardFont(void);

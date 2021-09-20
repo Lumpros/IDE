@@ -3,6 +3,10 @@
 #include "Utility.h"
 #include "WorkArea.h"
 
+#include <fstream>
+#include <sstream>
+#include <codecvt>
+
 #define SOURCE_TAB_CLASS L"IDESourceTabClass"
 
 #define IDC_CLOSE_BUTTON 100
@@ -13,6 +17,8 @@ static LRESULT CALLBACK SourceTabWindowProcedure(HWND hWnd, UINT uMsg, WPARAM wP
 SourceTab::~SourceTab(void)
 {
 	SAFE_DELETE_PTR(m_sInfo.m_pSourceEdit);
+
+	free(m_sInfo.lpszFileName);
 }
 
 SourceTab::SourceTab(HWND hParentWindow)
@@ -64,7 +70,7 @@ HRESULT SourceTab::InitializeSourceTabWindow(HINSTANCE hInstance)
 {
 	m_hWndSelf = CreateWindow(
 		SOURCE_TAB_CLASS,
-		nullptr,
+		L"Untitled",
 		WS_CHILD | WS_VISIBLE,
 		0, 0, 0, 0,
 		m_hWndParent,
@@ -76,7 +82,6 @@ HRESULT SourceTab::InitializeSourceTabWindow(HINSTANCE hInstance)
 	if (!m_hWndSelf)
 		return E_FAIL;
 
-	m_sInfo.lpszFileName = L"Untitled";
 	m_sInfo.m_pSourceEdit = new SourceEdit(m_hWndParent); 
 
 	m_hCloseButton = CreateWindow(
@@ -95,7 +100,14 @@ HRESULT SourceTab::InitializeSourceTabWindow(HINSTANCE hInstance)
 
 void SourceTab::SetName(LPCWSTR lpszName)
 {
-	SetWindowText(m_hWndSelf, lpszName);
+	if (m_sInfo.lpszFileName != nullptr)
+		free(m_sInfo.lpszFileName);
+
+	m_sInfo.lpszFileName = _wcsdup(lpszName);
+
+	std::wstring file_name = Utility::GetFileNameFromPath(lpszName);
+
+	SetWindowText(m_hWndSelf, file_name.c_str());
 }
 
 LRESULT SourceTab::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -165,7 +177,12 @@ LRESULT SourceTab::OnPaint(HWND hWnd)
 	LPWSTR lpWindowText = new wchar_t[nMaxCount];
 	GetWindowText(hWnd, lpWindowText, nMaxCount);
 
-	Utility::DrawTextCentered(hDC, m_rcSelf, lpWindowText);
+	SIZE size;
+	GetTextExtentPoint32(hDC, lpWindowText, lstrlen(lpWindowText), &size);
+	TextOut(hDC, 
+		(m_rcSelf.bottom - size.cy),
+		(m_rcSelf.bottom - size.cy) / 2,
+		lpWindowText, lstrlen(lpWindowText));
 
 	EndPaint(hWnd, &ps);
 	return 0;
@@ -184,8 +201,8 @@ LRESULT SourceTab::OnMouseMove(HWND hWnd)
 
 		m_IsTrackingMouse = true;
 
-		InvalidateRect(hWnd, NULL, FALSE);
 		ShowWindow(m_hCloseButton, SW_SHOW);
+		InvalidateRect(hWnd, NULL, FALSE);
 	}
 
 	return 0;
@@ -201,7 +218,12 @@ LRESULT SourceTab::OnMouseLeave(HWND hWnd)
 
 	if (!PtInRect(&rcWindow, pt))
 	{
-		ShowWindow(m_hCloseButton, SW_HIDE);
+		if (!m_IsSelected)
+		{
+			crButton = RGB(200, 0, 0);
+		}
+
+		HideCloseButton();
 		InvalidateRect(hWnd, NULL, FALSE);
 	}
 
@@ -214,8 +236,8 @@ LRESULT SourceTab::OnDrawItem(HWND hWnd, LPARAM lParam)
 {
 	LPDRAWITEMSTRUCT lpDIS = reinterpret_cast<LPDRAWITEMSTRUCT>(lParam);
 
-	SetDCBrushColor(lpDIS->hDC, RGB(0xFF, 0x00, 0x00));
-	SetDCPenColor(lpDIS->hDC, RGB(0xFF, 0x00, 0x00));
+	SetDCBrushColor(lpDIS->hDC, crButton);
+	SetDCPenColor(lpDIS->hDC, crButton);
 
 	SelectObject(lpDIS->hDC, GetStockObject(DC_BRUSH));
 	SelectObject(lpDIS->hDC, GetStockObject(DC_PEN));
@@ -286,6 +308,8 @@ void SourceTab::Select(void)
 {
 	if (!m_IsSelected)
 	{
+		crButton = RGB(0xFF, 0, 0);
+
 		HWND hEditWindow = m_sInfo.m_pSourceEdit->GetHandle();
 
 		constexpr int offset = 1;
@@ -308,7 +332,7 @@ void SourceTab::Unselect(void)
 	if (m_IsSelected)
 	{
 		ShowWindow(m_sInfo.m_pSourceEdit->GetHandle(), SW_HIDE);
-
+		crButton = RGB(200, 0, 0);
 		m_IsSelected = false;
 		InvalidateRect(m_hWndSelf, NULL, TRUE);
 	}
@@ -322,6 +346,31 @@ void SourceTab::HideCloseButton(void) const
 bool SourceTab::IsSelected(void)
 {
 	return m_IsSelected;
+}
+
+void SourceTab::SetEditTextToContentsOfFile(LPCWSTR lpPath)
+{
+	std::wifstream file(lpPath);
+	file.imbue(std::locale(std::locale::empty(), new std::codecvt_utf8<wchar_t>));
+	std::wstringstream buffer;
+	buffer << file.rdbuf();
+
+	SetWindowText(m_sInfo.m_pSourceEdit->GetHandle(), buffer.str().c_str());
+}
+
+int SourceTab::GetRequiredTabWidth(void) const
+{
+	HDC hDC = GetDC(m_hWndSelf);
+
+	const int iButtonSize = static_cast<int>(20 * 0.6 * Utility::GetScaleForDPI(m_hWndSelf));
+
+	const wchar_t* name = GetName();
+	SIZE size;
+	GetTextExtentPoint32(hDC, name, lstrlen(name), &size);
+	delete[] name;
+	ReleaseDC(m_hWndSelf, hDC);
+
+	return size.cx + iButtonSize * 2 * Utility::GetScaleForDPI(m_hWndSelf);
 }
 
 LRESULT SourceTab::OnEraseBackground(HWND hWnd, WPARAM wParam)

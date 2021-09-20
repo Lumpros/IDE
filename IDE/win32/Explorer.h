@@ -12,6 +12,7 @@ private:
 	LRESULT OnGetMinMaxInfo(HWND hWnd, LPARAM lParam);
 	LRESULT OnNCHitTest(HWND hWnd, WPARAM wParam, LPARAM lParam);
 	LRESULT OnSize(HWND hWnd, LPARAM lParam);
+	LRESULT OnNotify(HWND hWnd, LPARAM lParam);
 
 	void ExploreDirectory(const wchar_t* directory);
 

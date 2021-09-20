@@ -116,12 +116,7 @@ void WorkArea::InsertSourceTab(SourceTab* pSourceTab)
 {
 	const wchar_t* pTabName = pSourceTab->GetName();
 
-	HDC hDC = GetDC(NULL);
-	SIZE size;
-	SelectObject(hDC, Utility::GetStandardFont());
-	GetTextExtentPoint32(hDC, pTabName, lstrlen(pTabName), &size);
-	int iTabWidth = static_cast<int>(size.cx * 2);
-	ReleaseDC(NULL, hDC);
+	int iTabWidth = pSourceTab->GetRequiredTabWidth();
 
 	delete[] pTabName;
 
@@ -137,34 +132,40 @@ void WorkArea::InsertSourceTab(SourceTab* pSourceTab)
 
 void WorkArea::OnDPIChanged(void)
 {
-	int iTabWidth = static_cast<int>(80 * Utility::GetScaleForDPI(m_hWndParent));
-	int iHeight = static_cast<int>(iTabHeight * Utility::GetScaleForDPI(m_hWndParent));
-
-	for (size_t i = 0; i < m_Tabs.size(); ++i)
+	if (!m_Tabs.empty())
 	{
-		const int iTabX = iTabWidth * i;
-		
-		SourceEdit* pSourceEdit = m_Tabs[i]->GetSourceEdit();
-		pSourceEdit->AdjustLeftMarginForDPI();
-		pSourceEdit->AdjustFontForDPI();
+		int iHeight = static_cast<int>(iTabHeight * Utility::GetScaleForDPI(m_hWndParent));
 
-		m_Tabs[i]->SetPos(iTabX, 0);
-		m_Tabs[i]->SetSize(iTabWidth, iHeight);
+		int iTabX = 0;
 
-		if (m_Tabs[i]->IsSelected()) 
+		for (size_t i = 0; i < m_Tabs.size(); ++i)
 		{
-			SetWindowPos(
-				pSourceEdit->GetHandle(),
-				nullptr,
-				0,
-				m_Tabs[i]->GetRect().bottom,
-				m_rcSelf.right,
-				m_rcSelf.bottom,
-				SWP_NOZORDER
-			);
+			SourceEdit* pSourceEdit = m_Tabs[i]->GetSourceEdit();
+			pSourceEdit->AdjustLeftMarginForDPI();
+			pSourceEdit->AdjustFontForDPI();
+
+			int iTabWidth = m_Tabs[i]->GetRequiredTabWidth();
+
+			m_Tabs[i]->SetPos(iTabX, 0);
+			m_Tabs[i]->SetSize(iTabWidth, iHeight);
+
+			if (m_Tabs[i]->IsSelected())
+			{
+				SetWindowPos(
+					pSourceEdit->GetHandle(),
+					nullptr,
+					0,
+					m_Tabs[i]->GetRect().bottom,
+					m_rcSelf.right,
+					m_rcSelf.bottom,
+					SWP_NOZORDER
+				);
+			}
+
+			iTabX += iTabWidth;
 		}
 	}
-	
+
 	this->UpdateBackgroundFont();
 }
 
@@ -281,7 +282,6 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 			}
 			
 			m_ClosedTabs.push_back(m_Tabs[i]);
-			m_Tabs[i]->HideCloseButton();
 			m_Tabs.erase(m_Tabs.begin() + i);
 		}
 	}
@@ -305,18 +305,15 @@ void WorkArea::SelectFileFromName(wchar_t* lpszName)
 	/* If one of them has the same name, select it */
 	for (size_t i = 0; i < m_Tabs.size(); ++i)
 	{
-		LPCWSTR lpName = m_Tabs[i]->GetName();
+		LPCWSTR lpName = m_Tabs[i]->GetPath();
 
-		if (lstrcmp(m_Tabs[i]->GetName(), lpszName) == 0)
+		if (lstrcmp(lpName, lpszName) == 0)
 		{
 			m_Tabs[m_SourceIndex]->Unselect();
 			m_Tabs[i]->Select();
 			m_SourceIndex = i;
-			delete[] lpName;
 			return;
 		}
-
-		delete[] lpName;
 	}
 
 	const bool areTabsOpened = (m_Tabs.size() > 0);
@@ -325,9 +322,9 @@ void WorkArea::SelectFileFromName(wchar_t* lpszName)
 	/* If it's found, open it and select it*/
 	for (size_t i = 0; i < m_ClosedTabs.size(); ++i)
 	{
-		LPCWSTR lpName = m_ClosedTabs[i]->GetName();
+		LPCWSTR lpName = m_ClosedTabs[i]->GetPath();
 
-		if (lstrcmp(m_ClosedTabs[i]->GetName(), lpszName) == 0)
+		if (lstrcmp(lpName, lpszName) == 0)
 		{
 			if (areTabsOpened && m_SourceIndex < m_Tabs.size())
 			{
@@ -344,17 +341,14 @@ void WorkArea::SelectFileFromName(wchar_t* lpszName)
 				if (m_Tabs[k] != m_ClosedTabs[i])
 					x += m_Tabs[k]->GetRect().right;
 
+			m_ClosedTabs[i]->HideCloseButton();
 			m_ClosedTabs[i]->SetPos(x, 0);
 			m_ClosedTabs.erase(m_ClosedTabs.begin() + i);
-			delete[] lpName;
 			return;
 		}
-
-		delete[] lpName;
 	}
 
 	/* if it was neither open nor closed, create it and select it*/
-	//CreateTab(lpszName);
 	CreateTab(lpszName);
 }
 
@@ -367,6 +361,7 @@ void WorkArea::CreateTab(wchar_t* lpszFileName)
 
 	SourceTab* pSourceTab = new SourceTab(m_hWndSelf);
 	pSourceTab->SetName(lpszFileName);
+	pSourceTab->SetEditTextToContentsOfFile(lpszFileName);
 	InsertSourceTab(pSourceTab);
 
 	m_Tabs.back()->Select();

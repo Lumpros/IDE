@@ -11,7 +11,7 @@
 
 struct SourceInfo {
 	SourceEdit* m_pSourceEdit = nullptr;
-	const wchar_t* lpszFileName = nullptr;
+	wchar_t* lpszFileName = nullptr;
 };
 
 class SourceTab : public Window
@@ -27,6 +27,7 @@ private:
 	LRESULT OnSize(HWND hWnd);
 	LRESULT OnCommand(HWND hWnd, WPARAM wParam);
 
+	COLORREF crButton = RGB(0xFF, 0, 0);
 	SourceInfo m_sInfo;
 	HWND m_hCloseButton = nullptr;
 	bool m_IsSelected = false;
@@ -45,6 +46,12 @@ public:
 	void Unselect(void);
 	void SetName(LPCWSTR lpszName);
 	void HideCloseButton(void) const;
+	void SetEditTextToContentsOfFile(LPCWSTR lpPath);
+	int GetRequiredTabWidth(void) const;
+
+	const wchar_t* GetPath(void) const {
+		return m_sInfo.lpszFileName;
+	}
 
 	/* Must be deleted by the caller */
 	const wchar_t* GetName(void) const { 
