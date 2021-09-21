@@ -6,6 +6,8 @@
 
 #define SOURCE_EDITOR_CLASS L"IDESourceEditorClass"
 
+#define NO_TABS_AVAILABLE (-1)
+
 static HRESULT RegisterSourceEditorWindowClass(HINSTANCE hInstance);
 static LRESULT CALLBACK SourceEditorWindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -326,7 +328,7 @@ void WorkArea::SelectFileFromName(wchar_t* lpszName)
 
 		if (lstrcmp(lpName, lpszName) == 0)
 		{
-			if (areTabsOpened && m_SourceIndex < m_Tabs.size())
+			if (areTabsOpened && m_SourceIndex < (int)m_Tabs.size())
 			{
 				m_Tabs[m_SourceIndex]->Unselect();
 			}
@@ -337,9 +339,14 @@ void WorkArea::SelectFileFromName(wchar_t* lpszName)
 			m_ClosedTabs[i]->Select();
 
 			int x = 0;
-			for (int k = 0; k < m_Tabs.size(); ++k)
+
+			for (int k = 0; k < (int)m_Tabs.size(); ++k)
+			{
 				if (m_Tabs[k] != m_ClosedTabs[i])
+				{
 					x += m_Tabs[k]->GetRect().right;
+				}
+			}
 
 			m_ClosedTabs[i]->HideCloseButton();
 			m_ClosedTabs[i]->SetPos(x, 0);
@@ -352,9 +359,35 @@ void WorkArea::SelectFileFromName(wchar_t* lpszName)
 	CreateTab(lpszName);
 }
 
+void WorkArea::CloseAllTabs(void)
+{
+	for (SourceTab* pSourceTab : m_Tabs)
+	{
+		if (pSourceTab->IsSelected())
+		{
+			pSourceTab->Unselect();
+		}
+
+		pSourceTab->Hide();
+
+		delete pSourceTab;
+	}
+
+	m_Tabs.clear();
+
+	for (SourceTab* pSourceTab : m_ClosedTabs)
+	{
+		delete pSourceTab;
+	}
+
+	m_ClosedTabs.clear();
+
+	m_SourceIndex = NO_TABS_AVAILABLE;
+}
+
 void WorkArea::CreateTab(wchar_t* lpszFileName)
 {
-	if (m_SourceIndex != -1 && (size_t)m_SourceIndex < m_Tabs.size())
+	if (m_SourceIndex != NO_TABS_AVAILABLE && m_SourceIndex < (int)m_Tabs.size())
 	{
 		m_Tabs[m_SourceIndex]->Unselect();
 	}
@@ -378,7 +411,7 @@ int WorkArea::GetSelectedTabIndex(void) const
 		}
 	}
 
-	return -1;
+	return NO_TABS_AVAILABLE;
 }
 
 static LRESULT OnCreate(HWND hWnd, LPARAM lParam)

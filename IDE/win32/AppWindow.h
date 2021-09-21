@@ -19,6 +19,8 @@ private:
 	LRESULT OnGetMinMax(HWND hWnd, LPARAM lParam);
 	LRESULT OnDPIChanged(HWND hWnd, LPARAM lParam);
 	LRESULT OnCommand(HWND hWNd, WPARAM wParam);
+	LRESULT OnOpenFolder(HWND hWnd);
+	LRESULT OnCloseProject(void);
 
 	HRESULT InitializeComponents(void);
 

@@ -110,7 +110,7 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 			WC_TREEVIEW,
 			L"Tree View",
 			WS_VISIBLE | WS_CHILD | TVS_HASLINES | TVS_LINESATROOT | 
-			TVS_HASBUTTONS | WS_CLIPCHILDREN | TVS_EDITLABELS,
+			TVS_HASBUTTONS | WS_CLIPCHILDREN,
 			0, 0,
 			m_rcSelf.right,
 			m_rcSelf.bottom,
@@ -127,6 +127,11 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 	}
 
 	return m_hWndSelf ? S_OK : E_FAIL;
+}
+
+void Explorer::CloseProjectFolder(void)
+{
+	TreeView_DeleteAllItems(m_hTreeWindow);
 }
 
 static void GetTreeItemPath(

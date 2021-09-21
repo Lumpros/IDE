@@ -23,6 +23,7 @@ private:
 public:
 	Explorer(HWND hParentWindow);
 
+	void CloseProjectFolder(void);
 	void OpenProjectFolder(std::wstring folder);
 
 	LRESULT WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);

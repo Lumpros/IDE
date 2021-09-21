@@ -250,32 +250,50 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 	switch (LOWORD(wParam))
 	{
 	case ID_FILE_OPEN_FOLDER:
-		BROWSEINFO bInfo;
-		ZeroMemory(&bInfo, sizeof(bInfo));
-		bInfo.lpszTitle = L"Select the project folder";
-		bInfo.hwndOwner = hWnd;
-		bInfo.lParam = reinterpret_cast<LPARAM>(L"C:\\");
-		bInfo.lpfn = BrowseFolderCallback;
-		bInfo.ulFlags = BIF_NEWDIALOGSTYLE;
+		return OnOpenFolder(hWnd);
 
-		LPITEMIDLIST pidl = SHBrowseForFolder(&bInfo);
-		if (pidl != 0)
+	case ID_FILE_CLOSE:
+		return OnCloseProject();
+	}
+
+	return 0;
+}
+
+LRESULT AppWindow::OnOpenFolder(HWND hWnd)
+{
+	BROWSEINFO bInfo;
+	ZeroMemory(&bInfo, sizeof(bInfo));
+	bInfo.lpszTitle = L"Select the project folder";
+	bInfo.hwndOwner = hWnd;
+	bInfo.lParam = reinterpret_cast<LPARAM>(L"C:\\");
+	bInfo.lpfn = BrowseFolderCallback;
+	bInfo.ulFlags = BIF_NEWDIALOGSTYLE;
+
+	LPITEMIDLIST pidl = SHBrowseForFolder(&bInfo);
+
+	if (pidl != 0)
+	{
+		wchar_t path[MAX_PATH];
+		SHGetPathFromIDList(pidl, path);
+
+		IMalloc* imalloc = nullptr;
+
+		if (SUCCEEDED(SHGetMalloc(&imalloc)))
 		{
-			wchar_t path[MAX_PATH];
-			SHGetPathFromIDList(pidl, path);
-			IMalloc* imalloc = nullptr;
-
-			if (SUCCEEDED(SHGetMalloc(&imalloc)))
-			{
-				imalloc->Free(pidl);
-				imalloc->Release();
-			}
-
-			m_pExplorer->OpenProjectFolder(path);
+			imalloc->Free(pidl);
+			imalloc->Release();
 		}
 
-		return 0;
+		m_pExplorer->OpenProjectFolder(path);
 	}
+
+	return 0;
+}
+
+LRESULT AppWindow::OnCloseProject(void)
+{
+	m_pExplorer->CloseProjectFolder();
+	m_pWorkArea->CloseAllTabs();
 
 	return 0;
 }
