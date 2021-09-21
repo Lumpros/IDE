@@ -3,6 +3,7 @@
 #include "Window.h"
 
 #include <string>
+#include <CommCtrl.h>
 
 class Explorer : public Window
 {
@@ -14,7 +15,7 @@ private:
 	LRESULT OnSize(HWND hWnd, LPARAM lParam);
 	LRESULT OnNotify(HWND hWnd, LPARAM lParam);
 
-	void ExploreDirectory(const wchar_t* directory);
+	void ExploreDirectory(const wchar_t* directory, HTREEITEM hParent);
 
 	RECT m_rcTree = { 0 };
 	HWND m_hTreeWindow = nullptr;

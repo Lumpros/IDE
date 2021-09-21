@@ -4,6 +4,7 @@
 #include "Utility.h"
 #include "AppWindow.h"
 
+#include <shellapi.h>
 #include <CommCtrl.h>
 #include <windowsx.h>
 
@@ -12,48 +13,34 @@
 static HRESULT RegisterExplorerWindowClass(HINSTANCE hInstance);
 static LRESULT CALLBACK ExplorerWindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-HTREEITEM AddItemToTree(HWND hwndTV, LPTSTR lpszItem, int nLevel)
+static HTREEITEM AddToTree(HWND hTreeView, HTREEITEM hParent, LPWSTR lpszItem)
 {
-	TVITEM tvi;
-	TVINSERTSTRUCT tvins;
-	static HTREEITEM hPrev = (HTREEITEM)TVI_FIRST;
-	static HTREEITEM hPrevRootItem = NULL;
-	static HTREEITEM hPrevLev2Item = NULL;
+	TVITEM tvItem;
+	tvItem.mask = TVIF_TEXT;
+	tvItem.pszText = lpszItem;
+	tvItem.cchTextMax = lstrlen(lpszItem);
+	
+	TVINSERTSTRUCT tvInsert;
+	tvInsert.item = tvItem;
+	tvInsert.hInsertAfter = TreeView_GetPrevSibling(hTreeView, TreeView_GetChild(hTreeView, hParent));
+	tvInsert.hParent = hParent;
 
-	tvi.mask = TVIF_TEXT | TVIF_PARAM;
+	return TreeView_InsertItem(hTreeView, &tvInsert);
+}
 
-	// Set the text of the item. 
-	tvi.pszText = lpszItem;
-	tvi.cchTextMax = lstrlen(lpszItem);
+static HTREEITEM SetItemAsTreeRoot(HWND hTreeView, LPWSTR lpszItem)
+{
+	TVITEM tvItem;
+	tvItem.mask = TVIF_TEXT;
+	tvItem.cchTextMax = lstrlen(lpszItem);
+	tvItem.pszText = lpszItem;
 
-	// Save the heading level in the item's application-defined 
-	// data area. 
-	tvi.lParam = (LPARAM)nLevel;
-	tvins.item = tvi;
-	tvins.hInsertAfter = hPrev;
+	TVINSERTSTRUCT tvInsert;
+	tvInsert.hParent = TVI_ROOT;
+	tvInsert.hInsertAfter = TVI_FIRST;
+	tvInsert.item = tvItem;
 
-	// Set the parent item based on the specified level. 
-	if (nLevel == 1)
-		tvins.hParent = TVI_ROOT;
-	else if (nLevel == 2)
-		tvins.hParent = hPrevRootItem;
-	else
-		tvins.hParent = hPrevLev2Item;
-
-	// Add the item to the tree-view control. 
-	hPrev = (HTREEITEM)SendMessage(hwndTV, TVM_INSERTITEM,
-		0, (LPARAM)(LPTVINSERTSTRUCT)&tvins);
-
-	if (hPrev == NULL)
-		return NULL;
-
-	// Save the handle to the item. 
-	if (nLevel == 1)
-		hPrevRootItem = hPrev;
-	else if (nLevel == 2)
-		hPrevLev2Item = hPrev;
-
-	return hPrev;
+	return TreeView_InsertItem(hTreeView, &tvInsert);
 }
 
 Explorer::Explorer(HWND hParentWindow)
@@ -135,6 +122,7 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 
 		if (!m_hTreeWindow) {
 			Logger::Write(L"Failed to create tree view window!");
+			return E_FAIL;
 		}
 	}
 
@@ -290,8 +278,6 @@ LRESULT Explorer::OnSize(HWND hWnd, LPARAM lParam)
 
 #define BUFFER_SIZE (MAX_PATH + 1)
 
-int depth = 1;
-
 static inline bool IsHiddenFile(const wchar_t* lpszFileName)
 {
 	return lpszFileName[0] == L'.';
@@ -302,7 +288,7 @@ static inline bool IsDirectory(LPWIN32_FIND_DATA pFData)
 	return pFData->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
 }
 
-void Explorer::ExploreDirectory(const wchar_t* directory)
+void Explorer::ExploreDirectory(const wchar_t* directory, HTREEITEM hParent)
 {
 	std::wstring wstr = directory;
 	wstr.append(L"\\*");
@@ -320,21 +306,19 @@ void Explorer::ExploreDirectory(const wchar_t* directory)
 					std::wstring new_dir = directory;
 					new_dir += L'\\';
 					new_dir += find_data.cFileName;
-					AddItemToTree(m_hTreeWindow, find_data.cFileName, depth);
-					++depth;
-					ExploreDirectory(new_dir.c_str());
+					HTREEITEM hItem = AddToTree(m_hTreeWindow, hParent, find_data.cFileName);
+					ExploreDirectory(new_dir.c_str(), hItem);
 				}
 
 				else
 				{
-					AddItemToTree(m_hTreeWindow, find_data.cFileName, depth);
+					AddToTree(m_hTreeWindow, hParent, find_data.cFileName);
 				}
 			}
 		} while (FindNextFile(hFind, &find_data));
 
 		FindClose(hFind);
 
-		--depth;
 	}
 
 	else
@@ -355,11 +339,9 @@ void Explorer::OpenProjectFolder(std::wstring folder)
 
 	TreeView_DeleteAllItems(m_hTreeWindow);
 
-	AddItemToTree(m_hTreeWindow, (wchar_t*)folder.c_str() + pointer_offset, 1);
+	HTREEITEM hRoot = SetItemAsTreeRoot(m_hTreeWindow, const_cast<wchar_t*>(folder.c_str()) + pointer_offset);
 
-	depth = 2;
-
-	ExploreDirectory(folder.c_str() + pointer_offset);
+	ExploreDirectory(folder.c_str() + pointer_offset, hRoot);
 }
 
 static LRESULT OnCreate(HWND hWnd, LPARAM lParam)
