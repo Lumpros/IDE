@@ -21,23 +21,29 @@ INT APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
-	InitCommonControls();
-	BufferedPaintInit();
-
 	Logger::SetOutputPath(L"logs.txt");
 
-	Application m_App(hInstance);
+	InitCommonControls();
 
-	if (FAILED(m_App.Initialize(lpCmdLine)))
+	if (SUCCEEDED(BufferedPaintInit()))
 	{
-		Logger::Write(L"App initialization failed!");
-		Logger::CloseOutputFile();
-		return -1;
+		Application m_App(hInstance);
+
+		if (FAILED(m_App.Initialize(lpCmdLine)))
+		{
+			Logger::Write(L"App initialization failed!");
+			Logger::CloseOutputFile();
+			return -1;
+		}
+
+		m_App.Run();
+		BufferedPaintUnInit();
 	}
 
-	m_App.Run();
-
-	BufferedPaintUnInit();
+	else
+	{
+		Logger::Write(L"Failed to initialize buffered paint!");
+	}
 
 	return 0;
 }

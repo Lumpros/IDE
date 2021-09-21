@@ -2,6 +2,8 @@
 #include "Logger.h"
 #include "Utility.h"
 #include "WorkArea.h"
+#include "AppWindow.h"
+
 
 #include <fstream>
 #include <sstream>
@@ -101,7 +103,9 @@ HRESULT SourceTab::InitializeSourceTabWindow(HINSTANCE hInstance)
 void SourceTab::SetName(LPCWSTR lpszName)
 {
 	if (m_sInfo.lpszFileName != nullptr)
+	{
 		free(m_sInfo.lpszFileName);
+	}
 
 	m_sInfo.lpszFileName = _wcsdup(lpszName);
 
@@ -314,11 +318,20 @@ void SourceTab::Select(void)
 
 		constexpr int offset = 1;
 
+		AppWindow* pAppWindow = GetAssociatedObject<AppWindow>(GetParent(m_hWndParent));
+
 		RECT rcParent;
 		GetClientRect(m_hWndParent, &rcParent);
-		SetWindowPos(hEditWindow, nullptr, 0, m_rcSelf.bottom + offset, rcParent.right, rcParent.bottom - offset, SWP_NOZORDER);
 
-		ShowWindow(hEditWindow, SW_SHOW);
+		RECT rcStatusBar;
+		GetClientRect(pAppWindow->GetStatusBar()->GetHandle(), &rcStatusBar);
+
+		m_sInfo.m_pSourceEdit->SetPos(0, m_rcSelf.bottom + offset);
+		m_sInfo.m_pSourceEdit->SetSize(
+			rcParent.right,
+			rcParent.bottom - rcStatusBar.bottom + 3
+		);
+		m_sInfo.m_pSourceEdit->Show();
 
 		m_IsSelected = true;
 		InvalidateRect(m_hWndSelf, NULL, TRUE);
@@ -352,6 +365,7 @@ void SourceTab::SetEditTextToContentsOfFile(LPCWSTR lpPath)
 {
 	std::wifstream file(lpPath);
 	file.imbue(std::locale(std::locale::empty(), new std::codecvt_utf8<wchar_t>));
+
 	std::wstringstream buffer;
 	buffer << file.rdbuf();
 
@@ -370,7 +384,7 @@ int SourceTab::GetRequiredTabWidth(void) const
 	delete[] name;
 	ReleaseDC(m_hWndSelf, hDC);
 
-	return size.cx + iButtonSize * 2 * Utility::GetScaleForDPI(m_hWndSelf);
+	return static_cast<int>(size.cx + iButtonSize * 2 * Utility::GetScaleForDPI(m_hWndSelf));
 }
 
 LRESULT SourceTab::OnEraseBackground(HWND hWnd, WPARAM wParam)

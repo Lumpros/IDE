@@ -1,6 +1,7 @@
 #include "WorkArea.h"
 #include "Logger.h"
 #include "Utility.h"
+#include "AppWindow.h"
 
 #include <Richedit.h>
 
@@ -116,18 +117,17 @@ void WorkArea::UpdateBackgroundFont(void)
 
 void WorkArea::InsertSourceTab(SourceTab* pSourceTab)
 {
-	const wchar_t* pTabName = pSourceTab->GetName();
-
-	int iTabWidth = pSourceTab->GetRequiredTabWidth();
-
-	delete[] pTabName;
-
 	int iTabX = 0;
-	for (SourceTab* pTab : m_Tabs)
+
+	for (SourceTab* pTab : m_Tabs) 
+	{
 		iTabX += pTab->GetRect().right;
+	}
 
 	pSourceTab->SetPos(iTabX, 0);
-	pSourceTab->SetSize(iTabWidth, (int)(iTabHeight * Utility::GetScaleForDPI(m_hWndParent)));
+	pSourceTab->SetSize(
+		pSourceTab->GetRequiredTabWidth(),
+		static_cast<int>(iTabHeight * Utility::GetScaleForDPI(m_hWndParent)));
 
 	m_Tabs.push_back(pSourceTab);
 }
@@ -157,9 +157,9 @@ void WorkArea::OnDPIChanged(void)
 					pSourceEdit->GetHandle(),
 					nullptr,
 					0,
-					m_Tabs[i]->GetRect().bottom,
+					m_Tabs[i]->GetRect().bottom + 1,
 					m_rcSelf.right,
-					m_rcSelf.bottom,
+					m_rcSelf.bottom - 1,
 					SWP_NOZORDER
 				);
 			}
@@ -220,7 +220,19 @@ LRESULT WorkArea::OnPaint(HWND hWnd)
 	{
 		SelectObject(hDC, hBkFont);
 		SetBkMode(hDC, TRANSPARENT);
+		m_rcSelf.left = 0;
+		FillRect(hDC, &m_rcSelf, (HBRUSH)GetStockObject(LTGRAY_BRUSH));
+
 		Utility::DrawTextCentered(hDC, m_rcSelf, L"Opened files are displayed here");
+	}
+
+	else
+	{
+		RECT rcNew = m_rcSelf;
+		rcNew.left = 0;
+		rcNew.bottom = m_Tabs.front()->GetRect().bottom + 1;
+
+		FillRect(hDC, &rcNew, (HBRUSH)GetStockObject(LTGRAY_BRUSH));
 	}
 
 	EndPaint(hWnd, &ps);
@@ -236,8 +248,10 @@ LRESULT WorkArea::OnSize(HWND hWnd, LPARAM lParam)
 
 	m_SourceIndex = GetSelectedTabIndex();
 
-	if (m_Tabs.size() > (size_t)m_SourceIndex)
+	if (m_Tabs.size() > static_cast<size_t>(m_SourceIndex))
 	{
+		AppWindow* pAppWindow = GetAssociatedObject<AppWindow>(m_hWndParent);
+
 		SetWindowPos(
 			m_Tabs[m_SourceIndex]->GetSourceEdit()->GetHandle(),
 			nullptr,
@@ -274,31 +288,42 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 		{
 			if (m_Tabs.size() != 1 && isSelected)
 			{
+				// Try to select the tab at the right of the selected one
 				try {
 					m_Tabs.at(i + 1)->Select();
 					m_SourceIndex = i + 1;
+				// If an exception is thrown, there wont be one to the right
+				// So select the one to the left
+				// We know there will be one to the left, since size > 1 and
+				// There arent any tabs to the left (=> there has to be one to the left)
 				} catch (...) {
 					m_Tabs.at(i - 1)->Select();
 					m_SourceIndex = i - 1;
 				}
 			}
 			
+			// Move the tab to the closed tabs
 			m_ClosedTabs.push_back(m_Tabs[i]);
 			m_Tabs.erase(m_Tabs.begin() + i);
+
+			break;
 		}
 	}
 
-	int x_pos = 0;
-
-	for (size_t index = 0; index < m_Tabs.size(); ++index)
+	// Place the tabs to the correct places after closing one
+	for (size_t index = 0, x_pos = 0; index < m_Tabs.size(); ++index)
 	{
 		m_Tabs[index]->SetPos(x_pos, 0);
+
 		x_pos += m_Tabs[index]->GetRect().right;
 	}
 
 	return 0;
 }
 
+// Compare the tabs' full paths so there aren't any mix ups
+// For example: directory1/main.cpp and directory2/main.cpp
+// Have to open different tabs
 void WorkArea::SelectFileFromName(wchar_t* lpszName)
 {
 	m_SourceIndex = this->GetSelectedTabIndex();
@@ -430,6 +455,9 @@ static LRESULT CALLBACK SourceEditorWindowProcedure(HWND hWnd, UINT uMsg, WPARAM
 	{
 	case WM_CREATE:
 		return OnCreate(hWnd, lParam);
+
+	case WM_ERASEBKGND:
+		return FALSE;
 
 	default:
 		WorkArea* pSourceEditor = GetAssociatedObject<WorkArea>(hWnd);

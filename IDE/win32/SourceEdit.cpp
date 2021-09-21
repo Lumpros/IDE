@@ -26,6 +26,8 @@ static LRESULT OnChar(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT result = DefSubclassProc(hWnd, WM_CHAR, wParam, lParam);
 
+	return result;
+
 	DWORD dwStart, dwEnd, dwOldStart;
 	SendMessage(hWnd, EM_GETSEL, (WPARAM)&dwStart, (LPARAM)&dwEnd);
 

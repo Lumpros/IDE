@@ -10,15 +10,23 @@
 
 #define EXPLORER_WINDOW_CLASS L"IDEExplorerWindowClass"
 
+#define IDC_CONTEXT_OPEN 3000
+#define IDC_CONTEXT_RENAME 3001
+#define IDC_CONTEXT_COPY 3002
+#define IDC_CONTEXT_CUT 3003
+#define IDC_CONTEXT_DELETE 3004
+
 static HRESULT RegisterExplorerWindowClass(HINSTANCE hInstance);
 static LRESULT CALLBACK ExplorerWindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-static HTREEITEM AddToTree(HWND hTreeView, HTREEITEM hParent, LPWSTR lpszItem)
+static HTREEITEM AddToTree(HWND hTreeView, HTREEITEM hParent, LPWSTR lpszItem, bool isDirectory)
 {
 	TVITEM tvItem;
-	tvItem.mask = TVIF_TEXT;
+	tvItem.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
 	tvItem.pszText = lpszItem;
 	tvItem.cchTextMax = lstrlen(lpszItem);
+	tvItem.iImage = isDirectory ? 0 : 1;
+	tvItem.iSelectedImage = isDirectory ? 0 : 1;
 	
 	TVINSERTSTRUCT tvInsert;
 	tvInsert.item = tvItem;
@@ -31,9 +39,11 @@ static HTREEITEM AddToTree(HWND hTreeView, HTREEITEM hParent, LPWSTR lpszItem)
 static HTREEITEM SetItemAsTreeRoot(HWND hTreeView, LPWSTR lpszItem)
 {
 	TVITEM tvItem;
-	tvItem.mask = TVIF_TEXT;
+	tvItem.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
 	tvItem.cchTextMax = lstrlen(lpszItem);
 	tvItem.pszText = lpszItem;
+	tvItem.iImage = 0;
+	tvItem.iSelectedImage = 0;
 
 	TVINSERTSTRUCT tvInsert;
 	tvInsert.hParent = TVI_ROOT;
@@ -109,7 +119,7 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 			NULL,
 			WC_TREEVIEW,
 			L"Tree View",
-			WS_VISIBLE | WS_CHILD | TVS_HASLINES | TVS_LINESATROOT | 
+			WS_VISIBLE | WS_CHILD | 
 			TVS_HASBUTTONS | WS_CLIPCHILDREN,
 			0, 0,
 			m_rcSelf.right,
@@ -124,9 +134,34 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 			Logger::Write(L"Failed to create tree view window!");
 			return E_FAIL;
 		}
+
+		hImageList = ImageList_Create(20, 20, ILC_COLOR32, 2, 0);
+
+
+		// Get the folder icon
+		SHFILEINFO sfi;
+		SecureZeroMemory(&sfi, sizeof(sfi));
+		SHGetFileInfo(L"something", FILE_ATTRIBUTE_DIRECTORY, &sfi, sizeof(sfi), SHGFI_ICON | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBUTES);
+		ImageList_AddIcon(hImageList, sfi.hIcon);
+
+		// Get the document icon
+		SHSTOCKICONINFO sInfo;
+		sInfo.cbSize = sizeof(sInfo);
+		SHGetStockIconInfo(SIID_DOCNOASSOC, SHGSI_ICON, &sInfo);
+
+		ImageList_AddIcon(hImageList, sInfo.hIcon);
+
+		TreeView_SetImageList(m_hTreeWindow, hImageList, TVSIL_NORMAL);
 	}
 
 	return m_hWndSelf ? S_OK : E_FAIL;
+}
+
+Explorer::~Explorer(void)
+{
+	ImageList_Destroy(hImageList);
+
+	SAFE_DELETE_GDIOBJ(hFileIcon);
 }
 
 void Explorer::CloseProjectFolder(void)
@@ -134,8 +169,9 @@ void Explorer::CloseProjectFolder(void)
 	TreeView_DeleteAllItems(m_hTreeWindow);
 }
 
-static void GetTreeItemPath(
+static HTREEITEM GetClickedTreeItemPath(
 	_In_  HWND hTreeWindow,
+	_In_  POINT ptClick,
 	_Out_ std::wstring& path
 )
 {
@@ -144,12 +180,17 @@ static void GetTreeItemPath(
 	wchar_t buf[128];
 	wchar_t file_name[128];
 
+	TVHITTESTINFO htInfo;
+	htInfo.pt = ptClick;
+
 	TVITEM item;
 	item.mask = TVIF_TEXT;
-	item.hItem = TreeView_GetSelection(hTreeWindow);
+	item.hItem = TreeView_HitTest(hTreeWindow, &htInfo);
 	item.cchTextMax = 128;
 	item.pszText = file_name;
 	TreeView_GetItem(hTreeWindow, &item);
+
+	const HTREEITEM hReturn = item.hItem;
 
 	item.pszText = buf;
 	HTREEITEM hParentItem = TreeView_GetParent(hTreeWindow, item.hItem);
@@ -168,16 +209,21 @@ static void GetTreeItemPath(
 		hParentItem = TreeView_GetParent(hTreeWindow, hParentItem);
 	}
 
-	if (!path.empty())
-	{
-		path.append(file_name);
-	}
+	path.append(file_name);
+
+	return hReturn;
 }
 
 LRESULT Explorer::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
+	case WM_ERASEBKGND:
+		return FALSE;
+
+	case WM_PAINT:
+		return OnPaint(hWnd);
+
 	case WM_NCHITTEST:
 		return OnNCHitTest(hWnd, wParam, lParam);
 
@@ -189,9 +235,26 @@ LRESULT Explorer::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 
 	case WM_NOTIFY:
 		return OnNotify(hWnd, lParam);
+
+	case WM_COMMAND:
+		return OnCommand(hWnd, wParam);
 	}
 
 	return DefWindowProc(hWnd, uMsg, wParam, lParam);
+}
+
+LRESULT Explorer::OnPaint(HWND hWnd)
+{
+	PAINTSTRUCT ps;
+	HDC hDC = BeginPaint(hWnd, &ps);
+
+	SelectObject(hDC, GetStockObject(WHITE_BRUSH));
+	SelectObject(hDC, GetStockObject(WHITE_PEN));
+
+	Rectangle(hDC, m_rcSelf.right - 10, 0, m_rcSelf.right, m_rcSelf.bottom);
+
+	EndPaint(hWnd, &ps);
+	return 0;
 }
 
 static bool IsPathDirectory(const std::wstring& path)
@@ -208,20 +271,93 @@ LRESULT Explorer::OnNotify(HWND hWnd, LPARAM lParam)
 
 	if (info->code == NM_DBLCLK)
 	{
+		POINT ptCursor;
+		GetCursorPos(&ptCursor);
+		ScreenToClient(m_hTreeWindow, &ptCursor);
+
 		std::wstring selection_path;
-		::GetTreeItemPath(m_hTreeWindow, selection_path);
+		::GetClickedTreeItemPath(m_hTreeWindow, ptCursor, selection_path);
 
 		if (!selection_path.empty() && !IsPathDirectory(selection_path))
 		{
-			GetAssociatedObject<AppWindow>(m_hWndParent)
-				->GetWorkArea()
-				->SelectFileFromName(
-					const_cast<wchar_t*>(selection_path.c_str())
-				);
+			OpenTabFromFilePath(selection_path.c_str());
 		}
 	}
 
+	else if (info->code == NM_RCLICK)
+	{
+		OnRClickCreateContextMenu();
+	}
+
 	return 0;
+}
+
+void Explorer::OnRClickCreateContextMenu(void)
+{
+	HMENU hRClickMenu = CreatePopupMenu();
+
+	//std::wstring selected_item_path;
+	//GetTreeItemPath(m_hTreeWindow, selected_item_path);
+	
+	GetCursorPos(&m_ptCursorOnRClick);
+
+	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_OPEN, L"Open");
+	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_RENAME, L"Rename");
+	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_COPY, L"Copy\tCtrl+C");
+	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_CUT, L"Cut\tCtrl+X");
+	AppendMenu(hRClickMenu, MF_SEPARATOR, NULL, nullptr);
+	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_DELETE, L"Delete\tDel");
+
+	TrackPopupMenu(hRClickMenu,
+		TPM_TOPALIGN,
+		m_ptCursorOnRClick.x,
+		m_ptCursorOnRClick.y,
+		NULL,
+		m_hWndSelf,
+		NULL
+	);
+
+	ScreenToClient(m_hTreeWindow, &m_ptCursorOnRClick);
+
+	DestroyMenu(hRClickMenu);
+}
+
+LRESULT Explorer::OnCommand(HWND hWnd, WPARAM wParam)
+{
+	switch (wParam)
+	{
+	case IDC_CONTEXT_OPEN:
+		OnContextOpen();
+		break;
+	}
+
+	return 0;
+}
+
+void Explorer::OnContextOpen(void)
+{
+	std::wstring selected;
+
+	HTREEITEM hClicked = ::GetClickedTreeItemPath(m_hTreeWindow, m_ptCursorOnRClick, selected);
+
+	if (IsPathDirectory(selected.c_str()))
+	{
+		TreeView_Expand(m_hTreeWindow, hClicked, TVE_EXPAND | TVE_EXPANDPARTIAL);
+	}
+
+	else
+	{
+		OpenTabFromFilePath(selected.c_str());
+	}
+}
+
+void Explorer::OpenTabFromFilePath(LPCWSTR lpFilePath)
+{
+	GetAssociatedObject<AppWindow>(m_hWndParent)
+		->GetWorkArea()
+		->SelectFileFromName(
+			const_cast<wchar_t*>(lpFilePath)
+		);
 }
 
 LRESULT Explorer::OnNCHitTest(HWND hWnd, WPARAM wParam, LPARAM lParam)
@@ -231,7 +367,7 @@ LRESULT Explorer::OnNCHitTest(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	ptCursor.y = HIWORD(lParam);
 	ScreenToClient(hWnd, &ptCursor);
 
-	if (ptCursor.x >= m_rcSelf.right - 10)
+	if (ptCursor.x >= m_rcSelf.right - 9)
 	{
 		return HTRIGHT;
 	}
@@ -243,8 +379,7 @@ LRESULT Explorer::OnGetMinMaxInfo(HWND hWnd, LPARAM lParam)
 {
 	LPMINMAXINFO pInfo = reinterpret_cast<LPMINMAXINFO>(lParam);
 
-	pInfo->ptMinTrackSize.x = static_cast<int>(200 * Utility::GetScaleForDPI(m_hWndParent));
-	pInfo->ptMaxTrackSize.x = static_cast<int>(400 * Utility::GetScaleForDPI(m_hWndParent));
+	pInfo->ptMinTrackSize.x = 9;
 
 	return 0;
 }
@@ -311,24 +446,23 @@ void Explorer::ExploreDirectory(const wchar_t* directory, HTREEITEM hParent)
 					std::wstring new_dir = directory;
 					new_dir += L'\\';
 					new_dir += find_data.cFileName;
-					HTREEITEM hItem = AddToTree(m_hTreeWindow, hParent, find_data.cFileName);
+					HTREEITEM hItem = AddToTree(m_hTreeWindow, hParent, find_data.cFileName, true);
 					ExploreDirectory(new_dir.c_str(), hItem);
 				}
 
 				else
 				{
-					AddToTree(m_hTreeWindow, hParent, find_data.cFileName);
+					AddToTree(m_hTreeWindow, hParent, find_data.cFileName, false);
 				}
 			}
 		} while (FindNextFile(hFind, &find_data));
 
 		FindClose(hFind);
-
 	}
 
 	else
 	{
-		Logger::Write(L"Folder \'%s\' was not found!\n", directory);
+		Logger::Write(L"Folder \'%s\' was not found!", directory);
 	}
 }
 
@@ -338,7 +472,11 @@ void Explorer::OpenProjectFolder(std::wstring folder)
 
 	if (folder[0] == L'\"')
 	{
+		/* instead of manipulating the string */
+		/* simply just pass the string starting from the second character */
+		/* in order to skip the " character */
 		pointer_offset = 1;
+
 		folder.back() = L'\0';
 	}
 
@@ -347,6 +485,8 @@ void Explorer::OpenProjectFolder(std::wstring folder)
 	HTREEITEM hRoot = SetItemAsTreeRoot(m_hTreeWindow, const_cast<wchar_t*>(folder.c_str()) + pointer_offset);
 
 	ExploreDirectory(folder.c_str() + pointer_offset, hRoot);
+
+	TreeView_Expand(m_hTreeWindow, hRoot, TVE_EXPAND | TVE_EXPANDPARTIAL);
 }
 
 static LRESULT OnCreate(HWND hWnd, LPARAM lParam)

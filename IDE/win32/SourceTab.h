@@ -30,6 +30,7 @@ private:
 	COLORREF crButton = RGB(0xFF, 0, 0);
 	SourceInfo m_sInfo;
 	HWND m_hCloseButton = nullptr;
+	HWND m_hAbsolutePathTooltip = nullptr;
 	bool m_IsSelected = false;
 	bool m_IsTrackingMouse = false;
 

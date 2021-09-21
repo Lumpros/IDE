@@ -19,3 +19,8 @@ StatusBar::StatusBar(HWND hParentWindow)
 		nullptr
 	);
 }
+
+void StatusBar::SetText(const wchar_t* lpszText, int index)
+{
+	SendMessage(m_hWndSelf, SB_SETTEXT, index, reinterpret_cast<LPARAM>(lpszText));
+}
