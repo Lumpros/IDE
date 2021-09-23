@@ -36,6 +36,8 @@ public:
 	void SelectFileFromName(wchar_t* lpszName);
 	void CloseAllTabs(void);
 
+	//void OnTab(LPCWSTR lpszAbsolutePath, LPCWSTR lpszNewAbsolutePath);
+
 	TabList& GetVisibleTabs(void);
 	TabList& GetHiddenTabs(void);
 

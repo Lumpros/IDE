@@ -7,6 +7,9 @@
 
 #include <CommCtrl.h>
 #include <ShlObj_core.h>
+#include <Shlwapi.h>
+
+#pragma comment(lib, "Shlwapi.lib")
 
 #define APP_WINDOW_CLASS L"IDEAppWindow"
 
@@ -44,8 +47,45 @@ void AppWindow::Initialize(HINSTANCE hInstance, LPWSTR lpCmdLine)
 
 	if (HasArguements(lpCmdLine))
 	{
-		std::wstring path = lpCmdLine;
-		m_pExplorer->OpenProjectFolder(path);
+		OpenFolderFromCommandLine(lpCmdLine);
+	}
+}
+
+void AppWindow::OpenFolderFromCommandLine(LPWSTR lpCmdLine)
+{
+	wchar_t absolute_path[MAX_PATH];
+
+	if (lpCmdLine[0] == L'\"')
+	{
+		lpCmdLine[lstrlen(lpCmdLine) - 1] = L'\0';
+		++lpCmdLine;
+	}
+
+	wchar_t* pPath = lpCmdLine;
+
+	if (PathIsRelative(lpCmdLine))
+	{
+		pPath = _wfullpath(absolute_path, lpCmdLine, MAX_PATH);
+	}
+
+	if (pPath != nullptr)
+	{
+		if (Utility::IsPathDirectory(lpCmdLine))
+		{
+			m_pStatusBar->SetText(L"Opening folder...", 0);
+			m_pExplorer->OpenProjectFolder(lpCmdLine);
+			m_pStatusBar->SetText(L"Folder opened", 0);
+		}
+
+		else
+		{
+			m_pStatusBar->SetText(L"Invalid directory entered.", 0);
+		}
+	}
+
+	else
+	{
+		m_pStatusBar->SetText(L"Failed to open folder.", 0);
 	}
 }
 

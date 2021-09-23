@@ -118,6 +118,8 @@ void SourceTab::SetName(LPCWSTR lpszName)
 	std::wstring file_name = Utility::GetFileNameFromPath(m_sInfo.lpszFileName);
 
 	SetWindowText(m_hWndSelf, file_name.c_str());
+
+	InvalidateRect(m_hWndSelf, NULL, FALSE);
 }
 
 void SourceTab::RemoveAsteriskFromDisplayedName(void)

@@ -54,15 +54,6 @@ ErrorList::ErrorList(HWND hParentWindow)
 
 	InitializeListViewColumns();
 	UpdateListViewColumnWidths();
-
-	return;
-
-	LVITEM lvi;
-	lvi.pszText = (wchar_t*)L"a value of type \"const wchar_t*\" cannot be assigned to an entity of type \"LPWSTR\"";
-	lvi.mask = LVIF_TEXT;
-	lvi.state = lvi.iSubItem = lvi.stateMask = 0;
-	
-	ListView_InsertItem(m_hWndSelf, &lvi);
 }
 
 void ErrorList::InitializeListViewColumns(void)

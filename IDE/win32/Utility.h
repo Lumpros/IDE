@@ -73,30 +73,5 @@ namespace Utility
 	// Pretty self explanatory
 	extern void DrawTextCentered(HDC hDC, const RECT& rc, const wchar_t* lpszText);
 
-	/// <summary>
-	/// Decides which tree item is under the mouse cursor, and
-	/// get its absolute path
-	/// </summary>
-	/// <param name="hTreeWindow"> Handle to Tree View window </param>
-	/// <param name="ptClick"> Cursor point relative to the top left of the Tree Viee Window </param>
-	/// <param name="path"> Receives the absolute path of the clicked tree item </param>
-	/// <returns> Tree item under mouse cursor </returns>
-	extern HTREEITEM GetClickedTreeItemPath(
-		_In_  HWND hTreeWindow,
-		_In_  POINT ptClick,
-		_Out_ std::wstring& path
-	);
-
-	/// <summary>
-	/// Get the absolute path of a treeitem
-	/// </summary>
-	/// <param name="hTreeWindow"> Handle to Tree View window </param>
-	/// <param name="hItem"> Handle to a Tree View item </param>
-	/// <param name="path"> Receives the absolute path of the clicked tree item </param>
-	/// <returns> Returns the handle of the tree item (same as hItem) </returns>
-	extern HTREEITEM GetItemPath(
-		_In_ HWND hTreeWindow,
-		_In_ HTREEITEM hItem,
-		_Out_ std::wstring& path
-	);
+	extern bool IsPathDirectory(const std::wstring& path);
 }

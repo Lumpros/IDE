@@ -84,7 +84,7 @@ static int GetLineHeight(HWND hWnd)
 
 static double GetZoomScale(HWND hWnd)
 {
-	int numerator, denominator;
+	int numerator = 0, denominator = 0;
 
 	SendMessage(
 		hWnd, EM_GETZOOM,
@@ -116,7 +116,7 @@ static void DrawLineNumberingBackground(HDC hDC, HWND hWnd, const RECT* p_rcClie
 
 static int CalculateLineNumberContainerHorizontalOffset(HWND hWnd)
 {
-	SCROLLINFO sInfo;
+	SCROLLINFO sInfo = {};
 	sInfo.cbSize = sizeof(SCROLLINFO);
 	sInfo.fMask = SIF_ALL;
 	GetScrollInfo(hWnd, SB_HORZ, &sInfo);
@@ -126,7 +126,7 @@ static int CalculateLineNumberContainerHorizontalOffset(HWND hWnd)
 
 static int CalculateLineNumberContainerVerticalOffset(HWND hWnd, int iLineHeight)
 {
-	SCROLLINFO sInfo;
+	SCROLLINFO sInfo = {};
 	sInfo.cbSize = sizeof(SCROLLINFO);
 	sInfo.fMask = SIF_ALL;
 	GetScrollInfo(hWnd, SB_VERT, &sInfo);
@@ -201,39 +201,6 @@ static LRESULT OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	DrawLineNumberingBackground(hDC, hWnd, &rcClient);
 	DrawLineNumbers(hDC, hWnd, &rcClient);
 
-	/*const int x_offset    = static_cast<const int>(8 * Utility::GetScaleForDPI(hWnd));
-	const int iLineCount  = GetLineCount(hWnd);
-
-	SelectObject(hDC, Utility::GetStandardFont());
-
-	int iLineHeight = GetLineHeight(hWnd), y = 0;
-
-	if (Utility::GetScaleForDPI(hWnd) == 1.0f)
-	{
-		++iLineHeight;
-	}
-
-	RECT rcClient;
-	GetClientRect(hWnd, &rcClient);
-
-	SelectObject(hDC, GetStockObject(DC_BRUSH));
-	SelectObject(hDC, GetStockObject(DC_PEN));
-	SetDCBrushColor(hDC, RGB(230, 230, 230));
-	SetDCPenColor(hDC, RGB(230, 230, 230));
-
-	Rectangle(hDC, 0, y, left_margin, rcClient.bottom);
-
-	SetBkMode(hDC, TRANSPARENT);
-
-	for (int i = SendMessage(hWnd, EM_GETFIRSTVISIBLELINE, 0, 0); i < iLineCount; ++i)
-	{
-		wchar_t buf[NUMBER_BUFSIZ];
-		_itow_s(i + 1, buf, NUMBER_BUFSIZ, BASE10);
-		TextOut(hDC, x_offset, y, buf, lstrlen(buf));
-		
-		y += iLineHeight;
-	}
-	*/
 	ReleaseDC(hWnd, hDC);
 
 	return result;

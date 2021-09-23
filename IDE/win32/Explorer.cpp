@@ -25,14 +25,14 @@ static LRESULT CALLBACK ExplorerWindowProcedure(HWND hWnd, UINT uMsg, WPARAM wPa
 
 static HTREEITEM AddToTree(HWND hTreeView, HTREEITEM hParent, LPWSTR lpszItem, bool isDirectory)
 {
-	TVITEM tvItem;
+	TVITEM tvItem = {};
 	tvItem.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
 	tvItem.pszText = lpszItem;
 	tvItem.cchTextMax = lstrlen(lpszItem);
 	tvItem.iImage = isDirectory ? 0 : 1;
 	tvItem.iSelectedImage = isDirectory ? 0 : 1;
 	
-	TVINSERTSTRUCT tvInsert;
+	TVINSERTSTRUCT tvInsert = {};
 	tvInsert.item = tvItem;
 	tvInsert.hInsertAfter = TreeView_GetPrevSibling(hTreeView, TreeView_GetChild(hTreeView, hParent));
 	tvInsert.hParent = hParent;
@@ -42,14 +42,14 @@ static HTREEITEM AddToTree(HWND hTreeView, HTREEITEM hParent, LPWSTR lpszItem, b
 
 static HTREEITEM SetItemAsTreeRoot(HWND hTreeView, LPWSTR lpszItem)
 {
-	TVITEM tvItem;
+	TVITEM tvItem = {};
 	tvItem.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
 	tvItem.cchTextMax = lstrlen(lpszItem);
 	tvItem.pszText = lpszItem;
 	tvItem.iImage = 0;
 	tvItem.iSelectedImage = 0;
 
-	TVINSERTSTRUCT tvInsert;
+	TVINSERTSTRUCT tvInsert = {};
 	tvInsert.hParent = TVI_ROOT;
 	tvInsert.hInsertAfter = TVI_FIRST;
 	tvInsert.item = tvItem;
@@ -128,7 +128,7 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 			NULL,
 			WC_TREEVIEW,
 			L"Tree View",
-			WS_VISIBLE | WS_CHILD | 
+			WS_VISIBLE | WS_CHILD | TVS_EDITLABELS |
 			TVS_HASBUTTONS | WS_CLIPCHILDREN,
 			0, 0,
 			m_rcSelf.right,
@@ -147,17 +147,20 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 		hImageList = ImageList_Create(20, 20, ILC_COLOR32, 2, 0);
 
 		// Get the folder icon
-		SHFILEINFO sfi;
+		SHFILEINFO sfi = {};
 		SecureZeroMemory(&sfi, sizeof(sfi));
 		SHGetFileInfo(L"something", FILE_ATTRIBUTE_DIRECTORY, &sfi, sizeof(sfi), SHGFI_ICON | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBUTES);
 		ImageList_AddIcon(hImageList, sfi.hIcon);
 
 		// Get the document icon
-		SHSTOCKICONINFO sInfo;
+		SHSTOCKICONINFO sInfo = {};
 		sInfo.cbSize = sizeof(sInfo);
 		SHGetStockIconInfo(SIID_DOCNOASSOC, SHGSI_ICON, &sInfo);
 
-		ImageList_AddIcon(hImageList, sInfo.hIcon);
+		if (sInfo.hIcon != nullptr)
+		{
+			ImageList_AddIcon(hImageList, sInfo.hIcon);
+		}
 
 		TreeView_SetImageList(m_hTreeWindow, hImageList, TVSIL_NORMAL);
 	}
@@ -175,6 +178,59 @@ Explorer::~Explorer(void)
 void Explorer::CloseProjectFolder(void)
 {
 	TreeView_DeleteAllItems(m_hTreeWindow);
+}
+
+HTREEITEM Explorer::GetClickedTreeItemPath(
+	_In_  HWND hTreeWindow,
+	_In_  POINT ptClick,
+	_Out_ std::wstring& path
+)
+{
+	TVHITTESTINFO htInfo = {};
+	htInfo.pt = ptClick;
+
+	return GetItemPath(hTreeWindow, TreeView_HitTest(hTreeWindow, &htInfo), path);
+}
+
+HTREEITEM Explorer::GetItemPath(
+	_In_ HWND hTreeWindow,
+	_In_ HTREEITEM hItem,
+	_Out_ std::wstring& path
+)
+{
+	path.clear();
+
+	wchar_t file_name[128];
+	wchar_t buf[128];
+
+	TVITEM item;
+	item.mask = TVIF_TEXT;
+	item.hItem = hItem;
+	item.cchTextMax = 128;
+	item.pszText = file_name;
+	TreeView_GetItem(hTreeWindow, &item);
+
+	item.pszText = buf;
+	HTREEITEM hParentItem = TreeView_GetParent(hTreeWindow, item.hItem);
+
+	while (hParentItem != nullptr)
+	{
+		std::wstring new_str = L"\\";
+		item.hItem = hParentItem;
+		item.mask = TVIF_TEXT;
+		TreeView_GetItem(hTreeWindow, &item);
+
+		new_str.insert(0, item.pszText);
+
+		path.insert(0, new_str);
+
+		hParentItem = TreeView_GetParent(hTreeWindow, hParentItem);
+	}
+
+	path.insert(0, m_RootDirectory);
+	path.append(file_name);
+
+	return hItem;
 }
 
 LRESULT Explorer::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -211,7 +267,7 @@ LRESULT Explorer::OnPaint(HWND hWnd)
 	PAINTSTRUCT ps;
 	HDC hDC = BeginPaint(hWnd, &ps);
 
-	RECT rcNew;
+	RECT rcNew = {};
 	rcNew.left = m_rcSelf.right - HTRIGHT_WIDTH - 1;
 	rcNew.top = 0;
 	rcNew.right = m_rcSelf.right;
@@ -223,39 +279,188 @@ LRESULT Explorer::OnPaint(HWND hWnd)
 	return 0;
 }
 
-static bool IsPathDirectory(const std::wstring& path)
-{
-	struct _stat64i32 s;
-	_wstat64i32(path.c_str(), &s);
-
-	return s.st_mode & S_IFDIR;
-}
-
 LRESULT Explorer::OnNotify(HWND hWnd, LPARAM lParam)
 {
 	LPNMHDR info = reinterpret_cast<LPNMHDR>(lParam);
 
-	if (info->code == NM_DBLCLK)
+	switch (info->code)
 	{
-		POINT ptCursor;
-		GetCursorPos(&ptCursor);
-		ScreenToClient(m_hTreeWindow, &ptCursor);
+	case NM_DBLCLK:
+		OnNMDoubleClick();
+		break;
 
-		std::wstring selection_path;
-		Utility::GetClickedTreeItemPath(m_hTreeWindow, ptCursor, selection_path);
-
-		if (!selection_path.empty() && !IsPathDirectory(selection_path))
-		{
-			OpenTabFromFilePath(selection_path.c_str());
-		}
-	}
-
-	else if (info->code == NM_RCLICK)
-	{
+	case NM_RCLICK:
 		OnRClickCreateContextMenu();
+		break;
+
+	case TVN_ENDLABELEDIT:
+		return OnEndLabelEdit(lParam);
 	}
 
 	return 0;
+}
+
+static bool FileNameContainsInvalidCharacters(LPCWSTR name)
+{
+	constexpr wchar_t invalid_chars[] = L"\\/:*?\"<>|";
+
+	for (size_t i = 0, len = lstrlen(name); i < len; ++i)
+	{
+		for (size_t k = 0; k < sizeof(invalid_chars) / sizeof(wchar_t); ++k)
+		{
+			if (name[i] == invalid_chars[k])
+			{
+				return true;
+			}
+		}
+	}
+	
+	return false;
+}
+
+LRESULT Explorer::OnEndLabelEdit(LPARAM lParam)
+{
+	LPNMTVDISPINFO pInfo = reinterpret_cast<LPNMTVDISPINFO>(lParam);
+
+	// Item editing wasn't cancelled
+	if (pInfo->item.pszText != nullptr) 
+	{
+		if (!FileNameContainsInvalidCharacters(pInfo->item.pszText))
+		{
+			std::wstring absolute_path;
+			GetItemPath(m_hTreeWindow, pInfo->item.hItem, absolute_path);
+
+			std::wstring new_absolute_path = absolute_path.substr(0, absolute_path.find_last_of(L'\\') + 1) + pInfo->item.pszText;
+		
+			const bool is_directory = Utility::IsPathDirectory(absolute_path);
+
+			if (MoveFile(absolute_path.c_str(), new_absolute_path.c_str()))
+			{
+				ChangeSavedAbsolutePath(absolute_path, new_absolute_path, is_directory);
+
+				return TRUE;
+			}
+
+			else
+			{
+				m_pStatusBar->SetText(L"Unable to rename file.", 0);
+			}
+		}
+
+		else
+		{
+			m_pStatusBar->SetText(L"Invalid character entered in name.", 0);
+		}
+	}
+
+	return FALSE;
+}
+
+void Explorer::ChangeSavedAbsolutePath(
+	const std::wstring& absolute_path,
+	const std::wstring& new_absolute_path,
+	const bool is_directory
+)
+{
+	AppWindow* pAppWindow = GetAssociatedObject<AppWindow>(m_hWndParent);
+
+	if (pAppWindow != nullptr)
+	{
+		WorkArea* pWorkArea = pAppWindow->GetWorkArea();
+
+		if (pWorkArea != nullptr)
+		{
+			if (is_directory)
+			{
+				OnFolderNameChange(absolute_path, new_absolute_path, pWorkArea);
+			}
+
+			else
+			{
+				UpdateOpenedTabName(absolute_path, new_absolute_path, pWorkArea);
+			}
+		}
+	}
+}
+
+static std::wstring GetFileNameFromPath(const std::wstring& path)
+{
+	return path.substr(path.find_last_of(L'\\') + 1, std::wstring::npos);
+}
+
+void Explorer::OnFolderNameChange(
+	const std::wstring& absolute_path,
+	const std::wstring& new_absolute_path,
+	WorkArea* pWorkArea
+)
+{
+	TabList& open_tabs = pWorkArea->GetVisibleTabs();
+	TabList& close_tabs = pWorkArea->GetHiddenTabs();
+
+	const size_t path_len = absolute_path.size();
+
+	for (SourceTab* pSourceTab : open_tabs) 
+	{
+		if (wcsstr(pSourceTab->GetPath(), absolute_path.c_str()) != nullptr)
+		{
+			std::wstring file_path = pSourceTab->GetPath();
+			file_path.replace(file_path.begin(), file_path.begin() + path_len, new_absolute_path);
+			pSourceTab->SetName(file_path.c_str());
+		}
+	}
+
+	for (SourceTab* pSourceTab : close_tabs)
+	{
+		if (wcsstr(pSourceTab->GetPath(), absolute_path.c_str()) != nullptr)
+		{
+			std::wstring file_path = pSourceTab->GetPath();
+			file_path.replace(file_path.begin(), file_path.begin() + path_len, new_absolute_path);
+			pSourceTab->SetName(file_path.c_str());
+		}
+	}
+}
+
+void Explorer::UpdateOpenedTabName(
+	const std::wstring& absolute_path,
+	const std::wstring& new_absolute_path,
+	WorkArea* pWorkArea
+)
+{
+	TabList& opened_tabs = pWorkArea->GetVisibleTabs();
+
+	for (SourceTab* pOpenTab : opened_tabs)
+	{
+		if (pOpenTab->GetPath() == absolute_path)
+		{
+			pOpenTab->SetName(new_absolute_path.c_str());
+			return;
+		}
+	}
+
+	TabList& closed_tabs = pWorkArea->GetHiddenTabs();
+
+	for (SourceTab* pCloseTab : opened_tabs)
+	{
+		if (pCloseTab->GetPath() == absolute_path)
+		{
+			pCloseTab->SetName(new_absolute_path.c_str());
+		}
+	}
+}
+
+void Explorer::OnNMDoubleClick(void)
+{
+	POINT ptCursor;
+	GetCursorPos(&ptCursor);
+	ScreenToClient(m_hTreeWindow, &ptCursor);
+
+	std::wstring selection_path;
+	GetClickedTreeItemPath(m_hTreeWindow, ptCursor, selection_path);
+
+	if (!selection_path.empty() && !Utility::IsPathDirectory(selection_path))
+	{
+		OpenTabFromFilePath(selection_path.c_str());
+	}
 }
 
 void Explorer::OnRClickCreateContextMenu(void)
@@ -269,11 +474,11 @@ void Explorer::OnRClickCreateContextMenu(void)
 	ptCursorTransformed = ptCursor;
 	ScreenToClient(m_hTreeWindow, &ptCursorTransformed);
 
-	m_hRightClickedItem = Utility::GetClickedTreeItemPath(m_hTreeWindow, ptCursorTransformed, selected_item_path);
+	m_hRightClickedItem = GetClickedTreeItemPath(m_hTreeWindow, ptCursorTransformed, selected_item_path);
 
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_OPEN, L"Open");
 	
-	if (IsPathDirectory(selected_item_path))
+	if (Utility::IsPathDirectory(selected_item_path))
 	{
 		AppendMenu(hRClickMenu, MF_SEPARATOR, NULL, nullptr);
 		AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_OPEN_IN_FILE_EXPLORER, L"Open in File Explorer");
@@ -307,23 +512,212 @@ LRESULT Explorer::OnCommand(HWND hWnd, WPARAM wParam)
 		break;
 
 	case IDC_CONTEXT_OPEN_IN_FILE_EXPLORER:
-		std::wstring path;
-		Utility::GetItemPath(m_hTreeWindow, m_hRightClickedItem, path);
-		ShellExecute(NULL, L"open", path.c_str(), NULL, NULL, SW_SHOWDEFAULT);
-		m_pStatusBar->SetText(L"Opened folder in File Explorer", 0);
+		OnOpenInFileExplorer();
+		break;
+
+	case IDC_CONTEXT_RENAME:
+		OnRename();
+		break;
+
+	case IDC_CONTEXT_DELETE:
+		int button_clicked = MessageBox(hWnd, L"Are you sure you want to permanently delete this item?", L"Delete item", MB_YESNO | MB_ICONEXCLAMATION);
+		if (button_clicked == IDYES)
+			OnDelete();
 		break;
 	}
 
 	return 0;
 }
 
+struct TABINFO {
+	SourceTab* pSourceTab = nullptr;
+	TabList* pTabList = nullptr;
+	int index = 0;
+};
+
+static TABINFO GetSourceTabFromAbsolutePath(LPCWSTR pAbsolutePath, WorkArea* pWorkArea)
+{
+	TABINFO tabInfo = {};
+
+	TabList& visible_tabs = pWorkArea->GetVisibleTabs();
+
+	for (size_t i = 0; i < visible_tabs.size(); ++i) 
+	{
+		if (lstrcmp(visible_tabs[i]->GetPath(), pAbsolutePath) == 0)
+		{
+			tabInfo.index = i;
+			tabInfo.pSourceTab = visible_tabs[i];
+			tabInfo.pTabList = &visible_tabs;
+			return tabInfo;
+		}
+	}
+
+	TabList& hidden_tabs = pWorkArea->GetHiddenTabs();
+
+	for (size_t i = 0; i < hidden_tabs.size(); ++i)
+	{
+		if (lstrcmp(hidden_tabs[i]->GetPath(), pAbsolutePath) == 0)
+		{
+			tabInfo.index = i;
+			tabInfo.pSourceTab = hidden_tabs[i];
+			tabInfo.pTabList = &hidden_tabs;
+			return tabInfo;
+		}
+	}
+
+	return TABINFO();
+}
+
+static HRESULT SilentDeleteDirectory(const std::wstring& path)
+{
+	const std::wstring shPath = path + L'\0';
+
+	SHFILEOPSTRUCT file_op = {
+		NULL,
+		FO_DELETE,
+		shPath.c_str(),
+		L"",
+		FOF_NOCONFIRMATION |
+		FOF_NOERRORUI |
+		FOF_SILENT,
+		false,
+		0,
+		L"" 
+	};
+
+	return SHFileOperation(&file_op) == 0 ? S_OK : E_FAIL;
+}
+
+static void DeleteTabFromWorkArea(TABINFO& tabInfo)
+{
+	tabInfo.pTabList->erase(tabInfo.pTabList->begin() + tabInfo.index);
+
+	tabInfo.pSourceTab->Hide();
+	DestroyWindow(tabInfo.pSourceTab->GetHandle());
+
+	tabInfo.pSourceTab->GetSourceEdit()->Hide();
+	DestroyWindow(tabInfo.pSourceTab->GetSourceEdit()->GetHandle());
+
+	delete tabInfo.pSourceTab;
+}
+
+static void CloseDirectoryTabs(
+	_In_ const std::wstring& directory,
+	_In_ const HWND hTreeWindow,
+	_In_ const HTREEITEM hFolderItem,
+	_In_ WorkArea* pWorkArea
+)
+{
+	HTREEITEM hItem = TreeView_GetChild(hTreeWindow, hFolderItem);
+
+	while (hItem != nullptr)
+	{
+		wchar_t buffer[MAX_PATH];
+
+		TVITEM tvItem;
+		tvItem.cchTextMax = MAX_PATH;
+		tvItem.pszText = buffer;
+		tvItem.mask = TVIF_TEXT;
+		tvItem.hItem = hItem;
+		TreeView_GetItem(hTreeWindow, &tvItem);
+
+		std::wstring file_path = (directory + L"\\") + buffer;
+
+		if (!Utility::IsPathDirectory(file_path))
+		{
+			TABINFO tabInfo = GetSourceTabFromAbsolutePath(file_path.c_str(), pWorkArea);
+
+			if (tabInfo.pSourceTab != nullptr)
+			{
+				DeleteTabFromWorkArea(tabInfo);
+			}
+		}
+
+		else {
+			CloseDirectoryTabs(file_path, hTreeWindow, hItem, pWorkArea);
+		}
+
+		hItem = TreeView_GetNextSibling(hTreeWindow, hItem);
+	}
+}
+
+void Explorer::OnDelete(void)
+{
+	std::wstring path;
+	this->GetItemPath(m_hTreeWindow, m_hRightClickedItem, path);
+
+	m_pStatusBar->SetText(L"Deleting file...", 0);
+
+	if (Utility::IsPathDirectory(path))
+	{
+		CloseDirectoryTabs(
+			path,
+			m_hTreeWindow,
+			m_hRightClickedItem,
+			GetAssociatedObject<AppWindow>(m_hWndParent)->GetWorkArea()
+		);
+
+		if (FAILED(SilentDeleteDirectory(path)))
+		{
+			m_pStatusBar->SetText(L"Folder deletion failed.", 0);
+		}
+
+		else
+		{
+			TreeView_DeleteItem(m_hTreeWindow, m_hRightClickedItem);
+			m_hRightClickedItem = nullptr;
+			m_pStatusBar->SetText(L"Folder deleted", 0);
+		}
+	}
+
+	else if (DeleteFile(path.c_str()) != 0)
+	{
+		m_pStatusBar->SetText(L"File deleted", 0);
+
+		TreeView_DeleteItem(m_hTreeWindow, m_hRightClickedItem);
+		m_hRightClickedItem = nullptr;
+
+		WorkArea* pWorkArea = GetAssociatedObject<AppWindow>(m_hWndParent)->GetWorkArea();
+
+		TABINFO tInfo = GetSourceTabFromAbsolutePath(path.c_str(), pWorkArea);
+
+		if (tInfo.pSourceTab)
+		{
+			DeleteTabFromWorkArea(tInfo);
+			pWorkArea->OnDPIChanged();
+		}
+	}
+
+	else {
+		m_pStatusBar->SetText(L"File deletion failed.", 0);
+	}
+}
+
+void Explorer::OnRename(void)
+{
+	// Undocumented for some reason but the return value
+	// is the handle to the single-line edit control
+	// that is created when the user starts editing
+	m_hRenameEdit = TreeView_EditLabel(m_hTreeWindow, m_hRightClickedItem);
+}
+
+void Explorer::OnOpenInFileExplorer(void)
+{
+	std::wstring path;
+	GetItemPath(m_hTreeWindow, m_hRightClickedItem, path);
+
+	ShellExecute(NULL, L"open", path.c_str(), NULL, NULL, SW_SHOWDEFAULT);
+
+	m_pStatusBar->SetText(L"Opened folder in File Explorer", 0);
+}
+
 void Explorer::OnContextOpen(void)
 {
 	std::wstring selected;
 
-	HTREEITEM hClicked = Utility::GetItemPath(m_hTreeWindow, m_hRightClickedItem, selected);
+	HTREEITEM hClicked = GetItemPath(m_hTreeWindow, m_hRightClickedItem, selected);
 
-	if (IsPathDirectory(selected.c_str()))
+	if (Utility::IsPathDirectory(selected.c_str()))
 	{
 		TreeView_Expand(m_hTreeWindow, hClicked, TVE_TOGGLE);
 	}
@@ -336,16 +730,22 @@ void Explorer::OnContextOpen(void)
 
 void Explorer::OpenTabFromFilePath(LPCWSTR lpFilePath)
 {
-	GetAssociatedObject<AppWindow>(m_hWndParent)
-		->GetWorkArea()
-		->SelectFileFromName(
-			const_cast<wchar_t*>(lpFilePath)
-		);
+	AppWindow* pAppWindow = GetAssociatedObject<AppWindow>(m_hWndParent);
+
+	if (pAppWindow != nullptr)
+	{
+		WorkArea* pWorkArea = pAppWindow->GetWorkArea();
+
+		if (pWorkArea != nullptr)
+		{
+			pWorkArea->SelectFileFromName(const_cast<wchar_t*>(lpFilePath));
+		}
+	}
 }
 
 LRESULT Explorer::OnNCHitTest(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
-	POINT ptCursor;
+	POINT ptCursor = {};
 	ptCursor.x = LOWORD(lParam);
 	ptCursor.y = HIWORD(lParam);
 	ScreenToClient(hWnd, &ptCursor);
@@ -488,9 +888,11 @@ void Explorer::SaveCurrentFile(WorkArea* pWorkArea)
 {
 	if (pWorkArea != nullptr)
 	{
-		SaveFileFromTab(pWorkArea->GetSelectedTab());
-
-		m_pStatusBar->SetText(L"Saved file.", 0);
+		if (pWorkArea->GetSelectedTab()->GetSourceEdit()->HasBeenEdited())
+		{
+			SaveFileFromTab(pWorkArea->GetSelectedTab());
+			m_pStatusBar->SetText(L"Saved file.", 0);
+		}
 	}
 }
 
@@ -523,23 +925,15 @@ HWND Explorer::GetTreeHandle(void) const
 
 void Explorer::OpenProjectFolder(std::wstring folder)
 {
-	int pointer_offset = 0;
-
-	if (folder[0] == L'\"')
-	{
-		/* instead of manipulating the string */
-		/* simply just pass the string starting from the second character */
-		/* in order to skip the " character */
-		pointer_offset = 1;
-
-		folder.back() = L'\0';
-	}
-
 	TreeView_DeleteAllItems(m_hTreeWindow);
 
-	HTREEITEM hRoot = SetItemAsTreeRoot(m_hTreeWindow, const_cast<wchar_t*>(folder.c_str()) + pointer_offset);
+	const size_t last_backslash_index = folder.find_last_of(L'\\');
 
-	ExploreDirectory(folder.c_str() + pointer_offset, hRoot);
+	m_RootDirectory = folder.substr(0, last_backslash_index + 1);
+
+	HTREEITEM hRoot = SetItemAsTreeRoot(m_hTreeWindow, const_cast<wchar_t*>(folder.c_str() + last_backslash_index + 1));
+
+	ExploreDirectory(folder.c_str(), hRoot);
 
 	TreeView_Expand(m_hTreeWindow, hRoot, TVE_EXPAND | TVE_EXPANDPARTIAL);
 }

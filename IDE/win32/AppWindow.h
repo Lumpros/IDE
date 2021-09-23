@@ -24,6 +24,8 @@ private:
 
 	HRESULT InitializeComponents(void);
 
+	void OpenFolderFromCommandLine(LPWSTR lpCmdLine);
+
 public:
 	~AppWindow(void);
 
