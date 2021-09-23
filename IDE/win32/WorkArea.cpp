@@ -5,7 +5,7 @@
 
 #include <Richedit.h>
 
-#define SOURCE_EDITOR_CLASS L"IDESourceEditorClass"
+#define SOURCE_EDITOR_CLASS L"IDEClass"
 
 #define NO_TABS_AVAILABLE (-1)
 
@@ -384,6 +384,16 @@ void WorkArea::SelectFileFromName(wchar_t* lpszName)
 	CreateTab(lpszName);
 }
 
+TabList& WorkArea::GetVisibleTabs(void)
+{
+	return m_Tabs;
+}
+
+TabList& WorkArea::GetHiddenTabs(void)
+{
+	return m_ClosedTabs;
+}
+
 void WorkArea::CloseAllTabs(void)
 {
 	for (SourceTab* pSourceTab : m_Tabs)
@@ -437,6 +447,22 @@ int WorkArea::GetSelectedTabIndex(void) const
 	}
 
 	return NO_TABS_AVAILABLE;
+}
+
+SourceTab* WorkArea::GetSelectedTab(void)
+{
+	m_SourceIndex = this->GetSelectedTabIndex();
+
+	if (m_SourceIndex != NO_TABS_AVAILABLE && !m_Tabs.empty())
+	{
+		try {
+			return m_Tabs.at(m_SourceIndex);
+		} catch (...) {
+			return nullptr;
+		}
+	}
+
+	return nullptr;
 }
 
 static LRESULT OnCreate(HWND hWnd, LPARAM lParam)

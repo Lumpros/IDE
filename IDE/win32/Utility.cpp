@@ -1,6 +1,7 @@
 #include "Utility.h"
 
 #include <stdlib.h>
+#include <CommCtrl.h>
 
 #define DOT_NOT_FOUND -1
 
@@ -132,4 +133,56 @@ std::wstring Utility::GetFileNameFromPath(const std::wstring& path)
 	}
 
 	return path;
+}
+
+HTREEITEM Utility::GetItemPath(
+	_In_ HWND hTreeWindow,
+	_In_ HTREEITEM hItem,
+	_Out_ std::wstring& path
+)
+{
+	path.clear();
+
+	wchar_t file_name[128];
+	wchar_t buf[128];
+
+	TVITEM item;
+	item.mask = TVIF_TEXT;
+	item.hItem = hItem;
+	item.cchTextMax = 128;
+	item.pszText = file_name;
+	TreeView_GetItem(hTreeWindow, &item);
+
+	item.pszText = buf;
+	HTREEITEM hParentItem = TreeView_GetParent(hTreeWindow, item.hItem);
+
+	while (hParentItem != nullptr)
+	{
+		std::wstring new_str = L"\\";
+		item.hItem = hParentItem;
+		item.mask = TVIF_TEXT;
+		TreeView_GetItem(hTreeWindow, &item);
+
+		new_str.insert(0, item.pszText);
+
+		path.insert(0, new_str);
+
+		hParentItem = TreeView_GetParent(hTreeWindow, hParentItem);
+	}
+
+	path.append(file_name);
+
+	return hItem;
+}
+
+HTREEITEM Utility::GetClickedTreeItemPath(
+	_In_  HWND hTreeWindow,
+	_In_  POINT ptClick,
+	_Out_ std::wstring& path
+)
+{
+	TVHITTESTINFO htInfo;
+	htInfo.pt = ptClick;
+
+	return GetItemPath(hTreeWindow, TreeView_HitTest(hTreeWindow, &htInfo), path);
 }

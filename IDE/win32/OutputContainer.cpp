@@ -332,9 +332,8 @@ void OutputContainer::ResizeWorkArea(
 	if (pWorkArea && pExplorer)
 	{
 		pWorkArea->SetSize(
-			rcParent.right - pExplorer->GetRect().right - 3,
-			rcParent.bottom - pWindowPos->cy - 3 -
-			(rcParent.bottom - pExplorer->GetRect().bottom)
+			rcParent.right - pExplorer->GetRect().right,
+			rcParent.bottom - pWindowPos->cy - 3 - (rcParent.bottom - pExplorer->GetRect().bottom)
 		);
 	}
 }

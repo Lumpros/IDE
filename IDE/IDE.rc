@@ -56,7 +56,6 @@ BEGIN
     BEGIN
         POPUP "New"
         BEGIN
-            MENUITEM "Folder...\tCtrl+Shift+N",     ID_FILE_NEW_FOLDER
             MENUITEM "File...\tCtrl+N",             ID_FILE_NEW_FILE
         END
         POPUP "Open"
@@ -90,12 +89,11 @@ END
 
 IDR_ACCELERATOR1 ACCELERATORS
 BEGIN
-    "N",            ID_FILE_NEW_FOLDER,     VIRTKEY, SHIFT, CONTROL, NOINVERT
     "N",            ID_FILE_NEW_FILE,       VIRTKEY, CONTROL, NOINVERT
-    "O",            ID_FILE_OPEN_FOLDER,    VIRTKEY, SHIFT, CONTROL, ALT, NOINVERT
     "O",            ID_FILE_OPEN_FILE,      VIRTKEY, CONTROL, NOINVERT
-    "S",            ID_FILE_SAVEFILE,       VIRTKEY, CONTROL, NOINVERT
+    "O",            ID_FILE_OPEN_FOLDER,    VIRTKEY, SHIFT, CONTROL, ALT, NOINVERT
     "S",            ID_FILE_SAVEALL,        VIRTKEY, SHIFT, CONTROL, NOINVERT
+    "S",            ID_FILE_SAVEFILE,       VIRTKEY, CONTROL, NOINVERT
 END
 
 #endif    // English (United Kingdom) resources

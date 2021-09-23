@@ -5,6 +5,8 @@
 
 #include <vector>
 
+typedef std::vector<SourceTab*> TabList;
+
 class WorkArea : public Window
 {
 private:
@@ -16,8 +18,8 @@ private:
 	HFONT hBkFont = nullptr;
 
 	int m_SourceIndex = 0;
-	std::vector<SourceTab*> m_Tabs;
-	std::vector<SourceTab*> m_ClosedTabs;
+	TabList m_Tabs;
+	TabList m_ClosedTabs;
 
 	void UpdateBackgroundFont(void);
 	void InsertSourceTab(SourceTab* pSourceTab);
@@ -33,6 +35,11 @@ public:
 	void UnselectAllTabs(void);
 	void SelectFileFromName(wchar_t* lpszName);
 	void CloseAllTabs(void);
+
+	TabList& GetVisibleTabs(void);
+	TabList& GetHiddenTabs(void);
+
+	SourceTab* GetSelectedTab(void);
 
 	LRESULT WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 };

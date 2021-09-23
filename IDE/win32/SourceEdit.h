@@ -9,11 +9,18 @@ private:
 
 	HFONT m_hFont = nullptr;
 
+	bool m_haveContentsBeenEdited;
+
 public:
 	explicit SourceEdit(HWND hParentWindow);
 	~SourceEdit(void);
 
 	void AdjustLeftMarginForDPI(void);
 	void AdjustFontForDPI(void);
+
+	void MarkAsEdited(void);
+	void MarkAsUnedited(void);
+
+	bool HasBeenEdited(void) const { return m_haveContentsBeenEdited; };
 };
 

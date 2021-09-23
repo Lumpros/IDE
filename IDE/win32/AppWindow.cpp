@@ -131,7 +131,8 @@ HRESULT AppWindow::InitializeComponents(void)
 	if (m_pWorkArea && m_pStatusBar)
 	{
 		m_pExplorer = new Explorer(m_hWndSelf);
-		
+		m_pExplorer->SetStatusBar(m_pStatusBar);
+
 		if (m_pExplorer)
 		{
 			m_pExplorer->SetSize(static_cast<int>(250 * Utility::GetScaleForDPI(m_hWndSelf)), 0);
@@ -193,30 +194,39 @@ LRESULT AppWindow::OnSize(HWND hWnd, LPARAM lParam)
 		RECT rcStatusBar;
 		GetClientRect(m_pStatusBar->GetHandle(), &rcStatusBar);
 
-		//m_pStatusBar->SetSize(rcStatusBar.right, rcStatusBar.bottom);
-
 		const int iStatusBarHeight = rcStatusBar.bottom;
 
 		if (m_pExplorer)
 		{
-			const int iExplorerWidth = min(m_pExplorer->GetRect().right, m_rcSelf.right);
+			int iExplorerWidth;
+
+			if (IsIconic(hWnd))
+			{
+				iExplorerWidth = m_pExplorer->GetRect().right;
+			}
+
+			else
+			{
+				iExplorerWidth = min(m_pExplorer->GetRect().right, m_rcSelf.right);
+			}
+
 			const int iWorkAreaHeight = m_pWorkArea->GetRect().bottom;
 
 			m_pExplorer->SetSize(iExplorerWidth, m_rcSelf.bottom - iStatusBarHeight);
 
 			if (m_pWorkArea)
 			{
-				m_pWorkArea->SetPos(iExplorerWidth + 3, 0);
+				m_pWorkArea->SetPos(iExplorerWidth, 0);
 
 				if (m_pOutputContainer)
 				{
 					m_pOutputContainer->SetPos(
-						iExplorerWidth + 3,
+						iExplorerWidth,
 						m_rcSelf.bottom - m_pOutputContainer->GetRect().bottom - iStatusBarHeight
 					);
 
 					m_pOutputContainer->SetSize(
-						m_rcSelf.right - iExplorerWidth - 3,
+						m_rcSelf.right - iExplorerWidth,
 						m_pOutputContainer->GetRect().bottom
 					);
 				}
@@ -271,18 +281,26 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 	case ID_FILE_EXIT:
 		PostQuitMessage(0);
 		return 0;
+
+	case ID_FILE_SAVEFILE:
+		m_pExplorer->SaveCurrentFile(m_pWorkArea);
+		return 0;
+
+	case ID_FILE_SAVEALL:
+		m_pExplorer->SaveAllFiles(m_pWorkArea);
+		return 0;
 	}
 
 	return 0;
 }
 
-static int CALLBACK BrowseFolderCallback(
-	HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
+static int CALLBACK BrowseFolderCallback(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
 {
-	if (uMsg == BFFM_INITIALIZED) {
-		LPCTSTR path = reinterpret_cast<LPCTSTR>(lpData);
-		::SendMessage(hwnd, BFFM_SETSELECTION, true, (LPARAM)path);
+	if (uMsg == BFFM_INITIALIZED) 
+	{
+		::SendMessage(hwnd, BFFM_SETSELECTION, true, lpData);
 	}
+
 	return 0;
 }
 
@@ -329,10 +347,13 @@ LRESULT AppWindow::OnOpenFolder(HWND hWnd)
 
 LRESULT AppWindow::OnCloseProject(void)
 {
-	m_pStatusBar->SetText(L"Closing Project...", 0);
-	m_pExplorer->CloseProjectFolder();
-	m_pWorkArea->CloseAllTabs();
-	m_pStatusBar->SetText(L"Project folder closed.", 0);
+	if (TreeView_GetCount(m_pExplorer->GetTreeHandle()) > 0)
+	{
+		m_pStatusBar->SetText(L"Closing Project...", 0);
+		m_pExplorer->CloseProjectFolder();
+		m_pWorkArea->CloseAllTabs();
+		m_pStatusBar->SetText(L"Project folder closed.", 0);
+	}
 
 	return 0;
 }
@@ -357,9 +378,6 @@ static LRESULT CALLBACK AppWindowProcedure(HWND hWnd, UINT uMessage, WPARAM wPar
 
 	case WM_CLOSE:
 		PostQuitMessage(0);
-		// This doesn't hide the window, instead it makes certain controls
-		// not turn black when the window is closed 
-		//ShowWindow(hWnd, SW_HIDE);
 		return 0;
 
 	case WM_QUIT:

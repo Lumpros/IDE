@@ -107,11 +107,40 @@ void SourceTab::SetName(LPCWSTR lpszName)
 		free(m_sInfo.lpszFileName);
 	}
 
+	const size_t length = lstrlen(lpszName);
+
 	m_sInfo.lpszFileName = _wcsdup(lpszName);
 
-	std::wstring file_name = Utility::GetFileNameFromPath(lpszName);
+	if (lpszName[length - 1] == L'*') {
+		m_sInfo.lpszFileName[length - 1] = L'\0';
+	}
+
+	std::wstring file_name = Utility::GetFileNameFromPath(m_sInfo.lpszFileName);
 
 	SetWindowText(m_hWndSelf, file_name.c_str());
+}
+
+void SourceTab::RemoveAsteriskFromDisplayedName(void)
+{
+	const size_t windowTextLength = GetWindowTextLength(m_hWndSelf) + 1;
+
+	wchar_t* buffer = new wchar_t[windowTextLength];
+
+	if (buffer != nullptr)
+	{
+		GetWindowText(m_hWndSelf, buffer, windowTextLength);
+
+		const size_t len = lstrlen(buffer);
+
+		if (buffer[len - 1] == L'*')
+		{
+			buffer[len - 1] = L'\0';
+			SetWindowText(m_hWndSelf, buffer);
+			InvalidateRect(m_hWndSelf, NULL, FALSE);
+		}
+
+		delete[] buffer;
+	}
 }
 
 LRESULT SourceTab::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)

@@ -7,14 +7,18 @@
 #include <shellapi.h>
 #include <CommCtrl.h>
 #include <windowsx.h>
+#include <fstream>
 
 #define EXPLORER_WINDOW_CLASS L"IDEExplorerWindowClass"
+
+#define HTRIGHT_WIDTH 3
 
 #define IDC_CONTEXT_OPEN 3000
 #define IDC_CONTEXT_RENAME 3001
 #define IDC_CONTEXT_COPY 3002
 #define IDC_CONTEXT_CUT 3003
 #define IDC_CONTEXT_DELETE 3004
+#define IDC_CONTEXT_OPEN_IN_FILE_EXPLORER 3005
 
 static HRESULT RegisterExplorerWindowClass(HINSTANCE hInstance);
 static LRESULT CALLBACK ExplorerWindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -72,6 +76,11 @@ Explorer::Explorer(HWND hParentWindow)
 		PostQuitMessage(1);
 		return;
 	}
+}
+
+void Explorer::SetStatusBar(StatusBar* pStatusBar)
+{
+	m_pStatusBar = pStatusBar;
 }
 
 static HRESULT RegisterExplorerWindowClass(HINSTANCE hInstance)
@@ -137,7 +146,6 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 
 		hImageList = ImageList_Create(20, 20, ILC_COLOR32, 2, 0);
 
-
 		// Get the folder icon
 		SHFILEINFO sfi;
 		SecureZeroMemory(&sfi, sizeof(sfi));
@@ -167,51 +175,6 @@ Explorer::~Explorer(void)
 void Explorer::CloseProjectFolder(void)
 {
 	TreeView_DeleteAllItems(m_hTreeWindow);
-}
-
-static HTREEITEM GetClickedTreeItemPath(
-	_In_  HWND hTreeWindow,
-	_In_  POINT ptClick,
-	_Out_ std::wstring& path
-)
-{
-	path.clear();
-
-	wchar_t buf[128];
-	wchar_t file_name[128];
-
-	TVHITTESTINFO htInfo;
-	htInfo.pt = ptClick;
-
-	TVITEM item;
-	item.mask = TVIF_TEXT;
-	item.hItem = TreeView_HitTest(hTreeWindow, &htInfo);
-	item.cchTextMax = 128;
-	item.pszText = file_name;
-	TreeView_GetItem(hTreeWindow, &item);
-
-	const HTREEITEM hReturn = item.hItem;
-
-	item.pszText = buf;
-	HTREEITEM hParentItem = TreeView_GetParent(hTreeWindow, item.hItem);
-
-	while (hParentItem != nullptr)
-	{
-		std::wstring new_str = L"\\";
-		item.hItem = hParentItem;
-		item.mask = TVIF_TEXT;
-		TreeView_GetItem(hTreeWindow, &item);
-
-		new_str.insert(0, item.pszText);
-
-		path.insert(0, new_str);
-
-		hParentItem = TreeView_GetParent(hTreeWindow, hParentItem);
-	}
-
-	path.append(file_name);
-
-	return hReturn;
 }
 
 LRESULT Explorer::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -248,10 +211,13 @@ LRESULT Explorer::OnPaint(HWND hWnd)
 	PAINTSTRUCT ps;
 	HDC hDC = BeginPaint(hWnd, &ps);
 
-	SelectObject(hDC, GetStockObject(WHITE_BRUSH));
-	SelectObject(hDC, GetStockObject(WHITE_PEN));
+	RECT rcNew;
+	rcNew.left = m_rcSelf.right - HTRIGHT_WIDTH - 1;
+	rcNew.top = 0;
+	rcNew.right = m_rcSelf.right;
+	rcNew.bottom = m_rcSelf.bottom;
 
-	Rectangle(hDC, m_rcSelf.right - 10, 0, m_rcSelf.right, m_rcSelf.bottom);
+	FillRect(hDC, &rcNew, (HBRUSH)COLOR_WINDOW);
 
 	EndPaint(hWnd, &ps);
 	return 0;
@@ -276,7 +242,7 @@ LRESULT Explorer::OnNotify(HWND hWnd, LPARAM lParam)
 		ScreenToClient(m_hTreeWindow, &ptCursor);
 
 		std::wstring selection_path;
-		::GetClickedTreeItemPath(m_hTreeWindow, ptCursor, selection_path);
+		Utility::GetClickedTreeItemPath(m_hTreeWindow, ptCursor, selection_path);
 
 		if (!selection_path.empty() && !IsPathDirectory(selection_path))
 		{
@@ -295,13 +261,25 @@ LRESULT Explorer::OnNotify(HWND hWnd, LPARAM lParam)
 void Explorer::OnRClickCreateContextMenu(void)
 {
 	HMENU hRClickMenu = CreatePopupMenu();
+	POINT ptCursor, ptCursorTransformed;
 
-	//std::wstring selected_item_path;
-	//GetTreeItemPath(m_hTreeWindow, selected_item_path);
-	
-	GetCursorPos(&m_ptCursorOnRClick);
+	std::wstring selected_item_path;
+	GetCursorPos(&ptCursor);
+
+	ptCursorTransformed = ptCursor;
+	ScreenToClient(m_hTreeWindow, &ptCursorTransformed);
+
+	m_hRightClickedItem = Utility::GetClickedTreeItemPath(m_hTreeWindow, ptCursorTransformed, selected_item_path);
 
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_OPEN, L"Open");
+	
+	if (IsPathDirectory(selected_item_path))
+	{
+		AppendMenu(hRClickMenu, MF_SEPARATOR, NULL, nullptr);
+		AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_OPEN_IN_FILE_EXPLORER, L"Open in File Explorer");
+		AppendMenu(hRClickMenu, MF_SEPARATOR, NULL, nullptr);
+	}
+
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_RENAME, L"Rename");
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_COPY, L"Copy\tCtrl+C");
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_CUT, L"Cut\tCtrl+X");
@@ -310,14 +288,12 @@ void Explorer::OnRClickCreateContextMenu(void)
 
 	TrackPopupMenu(hRClickMenu,
 		TPM_TOPALIGN,
-		m_ptCursorOnRClick.x,
-		m_ptCursorOnRClick.y,
+		ptCursor.x,
+		ptCursor.y,
 		NULL,
 		m_hWndSelf,
 		NULL
 	);
-
-	ScreenToClient(m_hTreeWindow, &m_ptCursorOnRClick);
 
 	DestroyMenu(hRClickMenu);
 }
@@ -329,6 +305,13 @@ LRESULT Explorer::OnCommand(HWND hWnd, WPARAM wParam)
 	case IDC_CONTEXT_OPEN:
 		OnContextOpen();
 		break;
+
+	case IDC_CONTEXT_OPEN_IN_FILE_EXPLORER:
+		std::wstring path;
+		Utility::GetItemPath(m_hTreeWindow, m_hRightClickedItem, path);
+		ShellExecute(NULL, L"open", path.c_str(), NULL, NULL, SW_SHOWDEFAULT);
+		m_pStatusBar->SetText(L"Opened folder in File Explorer", 0);
+		break;
 	}
 
 	return 0;
@@ -338,11 +321,11 @@ void Explorer::OnContextOpen(void)
 {
 	std::wstring selected;
 
-	HTREEITEM hClicked = ::GetClickedTreeItemPath(m_hTreeWindow, m_ptCursorOnRClick, selected);
+	HTREEITEM hClicked = Utility::GetItemPath(m_hTreeWindow, m_hRightClickedItem, selected);
 
 	if (IsPathDirectory(selected.c_str()))
 	{
-		TreeView_Expand(m_hTreeWindow, hClicked, TVE_EXPAND | TVE_EXPANDPARTIAL);
+		TreeView_Expand(m_hTreeWindow, hClicked, TVE_TOGGLE);
 	}
 
 	else
@@ -367,7 +350,7 @@ LRESULT Explorer::OnNCHitTest(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	ptCursor.y = HIWORD(lParam);
 	ScreenToClient(hWnd, &ptCursor);
 
-	if (ptCursor.x >= m_rcSelf.right - 9)
+	if (ptCursor.x >= m_rcSelf.right - HTRIGHT_WIDTH)
 	{
 		return HTRIGHT;
 	}
@@ -379,7 +362,7 @@ LRESULT Explorer::OnGetMinMaxInfo(HWND hWnd, LPARAM lParam)
 {
 	LPMINMAXINFO pInfo = reinterpret_cast<LPMINMAXINFO>(lParam);
 
-	pInfo->ptMinTrackSize.x = 9;
+	pInfo->ptMinTrackSize.x = HTRIGHT_WIDTH;
 
 	return 0;
 }
@@ -397,18 +380,18 @@ LRESULT Explorer::OnSize(HWND hWnd, LPARAM lParam)
 
 	if (pWorkArea)
 	{
-		pWorkArea->SetPos(m_rcSelf.right + 3, 0);
+		pWorkArea->SetPos(m_rcSelf.right, 0);
 
 		OutputContainer* pOutputContainer = pAppWindow->GetOutputWindow();
 
 		if (pOutputContainer)
 		{
-			pOutputContainer->SetPos(m_rcSelf.right + 3, pWorkArea->GetRect().bottom + 3);
-			pOutputContainer->SetSize(rcClient.right - m_rcSelf.right - 3, pOutputContainer->GetRect().bottom);
+			pOutputContainer->SetPos(m_rcSelf.right, pWorkArea->GetRect().bottom + 3);
+			pOutputContainer->SetSize(rcClient.right - m_rcSelf.right, pOutputContainer->GetRect().bottom);
 		}
 	}
 
-	m_rcTree.right = m_rcSelf.right - 10;
+	m_rcTree.right = m_rcSelf.right - HTRIGHT_WIDTH;
 	m_rcTree.bottom = m_rcSelf.bottom;
 
 	SetWindowPos(m_hTreeWindow, nullptr, 0, 0, m_rcTree.right, m_rcTree.bottom, SWP_NOZORDER | SWP_NOMOVE);
@@ -464,6 +447,78 @@ void Explorer::ExploreDirectory(const wchar_t* directory, HTREEITEM hParent)
 	{
 		Logger::Write(L"Folder \'%s\' was not found!", directory);
 	}
+}
+
+static void WriteWindowTextToFile(HWND hWindow, std::wofstream& file)
+{
+	const size_t length = GetWindowTextLength(hWindow) + 1;
+
+	wchar_t* buffer = new wchar_t[length];
+
+	GetWindowText(hWindow, buffer, length);
+	file.write(buffer, length);
+
+	delete[] buffer;
+}
+
+void Explorer::SaveFileFromTab(SourceTab* pSourceTab)
+{
+	if (pSourceTab != nullptr)
+	{
+		SourceEdit* pSourceEdit = pSourceTab->GetSourceEdit();
+
+		if (pSourceEdit != nullptr)
+		{
+			if (pSourceEdit->HasBeenEdited())
+			{
+				std::wofstream current_file(pSourceTab->GetPath(), std::ios::trunc | std::ios::binary);
+
+				if (current_file.is_open())
+				{
+					WriteWindowTextToFile(pSourceEdit->GetHandle(), current_file);
+					pSourceTab->RemoveAsteriskFromDisplayedName();
+					pSourceEdit->MarkAsUnedited();
+				}
+			}
+		}
+	}
+}
+
+void Explorer::SaveCurrentFile(WorkArea* pWorkArea)
+{
+	if (pWorkArea != nullptr)
+	{
+		SaveFileFromTab(pWorkArea->GetSelectedTab());
+
+		m_pStatusBar->SetText(L"Saved file.", 0);
+	}
+}
+
+void Explorer::SaveAllFiles(WorkArea* pWorkArea)
+{
+	TabList& opened_tabs = pWorkArea->GetVisibleTabs();
+
+	for (SourceTab* pSourceTab : opened_tabs)
+	{
+		SaveFileFromTab(pSourceTab);
+	}
+
+	TabList& hidden_tabs = pWorkArea->GetHiddenTabs();
+
+	for (SourceTab* pSourceTab : hidden_tabs)
+	{
+		SaveFileFromTab(pSourceTab);
+	}
+
+	if (!opened_tabs.empty() || !hidden_tabs.empty())
+	{
+		m_pStatusBar->SetText(L"All files saved.", 0);
+	}
+}
+
+HWND Explorer::GetTreeHandle(void) const
+{
+	return m_hTreeWindow;
 }
 
 void Explorer::OpenProjectFolder(std::wstring folder)

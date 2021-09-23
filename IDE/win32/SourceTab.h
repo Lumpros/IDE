@@ -48,6 +48,7 @@ public:
 	void SetName(LPCWSTR lpszName);
 	void HideCloseButton(void) const;
 	void SetEditTextToContentsOfFile(LPCWSTR lpPath);
+	void RemoveAsteriskFromDisplayedName(void);
 	int GetRequiredTabWidth(void) const;
 
 	const wchar_t* GetPath(void) const {
