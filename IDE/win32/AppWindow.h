@@ -21,6 +21,7 @@ private:
 	LRESULT OnCommand(HWND hWNd, WPARAM wParam);
 	LRESULT OnOpenFolder(HWND hWnd);
 	LRESULT OnCloseProject(void);
+	LRESULT OnOpenFile(void);
 
 	HRESULT InitializeComponents(void);
 

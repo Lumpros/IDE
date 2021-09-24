@@ -39,6 +39,7 @@ private:
 	void OnContextOpen(void);
 	void OnRClickCreateContextMenu(void);
 	void OnDelete(void);
+	void InitializeImageList(void);
 
 	LRESULT OnEndLabelEdit(
 		LPARAM lParam

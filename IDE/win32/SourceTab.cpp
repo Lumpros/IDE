@@ -117,6 +117,9 @@ void SourceTab::SetName(LPCWSTR lpszName)
 
 	std::wstring file_name = Utility::GetFileNameFromPath(m_sInfo.lpszFileName);
 
+	if (this->m_sInfo.m_pSourceEdit->HasBeenEdited())
+		file_name.push_back(L'*');
+
 	SetWindowText(m_hWndSelf, file_name.c_str());
 
 	InvalidateRect(m_hWndSelf, NULL, FALSE);
@@ -403,6 +406,11 @@ void SourceTab::SetEditTextToContentsOfFile(LPCWSTR lpPath)
 	SetWindowText(m_sInfo.m_pSourceEdit->GetHandle(), buffer.str().c_str());
 }
 
+void SourceTab::SetTemporary(bool temporary)
+{
+	m_IsTemporary = temporary;
+}
+
 int SourceTab::GetRequiredTabWidth(void) const
 {
 	HDC hDC = GetDC(m_hWndSelf);
@@ -421,6 +429,11 @@ int SourceTab::GetRequiredTabWidth(void) const
 LRESULT SourceTab::OnEraseBackground(HWND hWnd, WPARAM wParam)
 {
 	return FALSE;
+}
+
+bool SourceTab::IsTemporary(void) const
+{
+	return m_IsTemporary;
 }
 
 static LRESULT OnCreate(HWND hWnd, LPARAM lParam)

@@ -144,25 +144,7 @@ HRESULT Explorer::InitializeWindow(HINSTANCE hInstance)
 			return E_FAIL;
 		}
 
-		hImageList = ImageList_Create(20, 20, ILC_COLOR32, 2, 0);
-
-		// Get the folder icon
-		SHFILEINFO sfi = {};
-		SecureZeroMemory(&sfi, sizeof(sfi));
-		SHGetFileInfo(L"something", FILE_ATTRIBUTE_DIRECTORY, &sfi, sizeof(sfi), SHGFI_ICON | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBUTES);
-		ImageList_AddIcon(hImageList, sfi.hIcon);
-
-		// Get the document icon
-		SHSTOCKICONINFO sInfo = {};
-		sInfo.cbSize = sizeof(sInfo);
-		SHGetStockIconInfo(SIID_DOCNOASSOC, SHGSI_ICON, &sInfo);
-
-		if (sInfo.hIcon != nullptr)
-		{
-			ImageList_AddIcon(hImageList, sInfo.hIcon);
-		}
-
-		TreeView_SetImageList(m_hTreeWindow, hImageList, TVSIL_NORMAL);
+		InitializeImageList();
 	}
 
 	return m_hWndSelf ? S_OK : E_FAIL;
@@ -173,6 +155,36 @@ Explorer::~Explorer(void)
 	ImageList_Destroy(hImageList);
 
 	SAFE_DELETE_GDIOBJ(hFileIcon);
+}
+
+void Explorer::InitializeImageList(void)
+{
+	if (hImageList)
+		ImageList_Destroy(hImageList);
+
+	const int size = static_cast<int>(Utility::GetScaleForDPI(m_hWndParent) * 17);
+
+	hImageList = ImageList_Create(size, size, ILC_COLOR32, 2, 0);
+
+	// Get the folder icon
+	
+	SHSTOCKICONINFO sInfo = {};
+	sInfo.cbSize = sizeof(sInfo);
+	SHGetStockIconInfo(SIID_FOLDEROPEN, SHGSI_ICON, &sInfo);
+
+	if (sInfo.hIcon != nullptr)
+	{
+		ImageList_AddIcon(hImageList, sInfo.hIcon);
+	}
+
+	SHGetStockIconInfo(SIID_DOCNOASSOC, SHGSI_ICON, &sInfo);
+
+	if (sInfo.hIcon != nullptr)
+	{
+		ImageList_AddIcon(hImageList, sInfo.hIcon);
+	}
+
+	TreeView_SetImageList(m_hTreeWindow, hImageList, TVSIL_NORMAL);
 }
 
 void Explorer::CloseProjectFolder(void)
@@ -257,6 +269,10 @@ LRESULT Explorer::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 
 	case WM_COMMAND:
 		return OnCommand(hWnd, wParam);
+
+	case WM_DPICHANGED_BEFOREPARENT:
+		InitializeImageList();
+		return 0;
 	}
 
 	return DefWindowProc(hWnd, uMsg, wParam, lParam);
@@ -786,8 +802,15 @@ LRESULT Explorer::OnSize(HWND hWnd, LPARAM lParam)
 
 		if (pOutputContainer)
 		{
-			pOutputContainer->SetPos(m_rcSelf.right, pWorkArea->GetRect().bottom + 3);
-			pOutputContainer->SetSize(rcClient.right - m_rcSelf.right, pOutputContainer->GetRect().bottom);
+			pOutputContainer->SetPos(
+				m_rcSelf.right,
+				pWorkArea->GetRect().bottom + 3
+			);
+
+			pOutputContainer->SetSize(
+				rcClient.right - m_rcSelf.right,
+				pOutputContainer->GetRect().bottom
+			);
 		}
 	}
 

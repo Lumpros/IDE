@@ -8,6 +8,7 @@
 #include <CommCtrl.h>
 #include <ShlObj_core.h>
 #include <Shlwapi.h>
+#include <commdlg.h>
 
 #pragma comment(lib, "Shlwapi.lib")
 
@@ -315,6 +316,9 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 	case ID_FILE_OPEN_FOLDER:
 		return OnOpenFolder(hWnd);
 
+	case ID_FILE_OPEN_FILE:
+		return OnOpenFile();
+
 	case ID_FILE_CLOSE:
 		return OnCloseProject();
 
@@ -329,6 +333,37 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 	case ID_FILE_SAVEALL:
 		m_pExplorer->SaveAllFiles(m_pWorkArea);
 		return 0;
+	}
+
+	return 0;
+}
+
+LRESULT AppWindow::OnOpenFile(void)
+{
+	wchar_t buffer[MAX_PATH] = { 0 };
+
+	OPENFILENAME ofn;
+	ZeroMemory(&ofn, sizeof(OPENFILENAME));
+	ofn.lStructSize = sizeof(OPENFILENAME);
+	ofn.hwndOwner = m_hWndSelf;
+	ofn.lpstrFilter = L"Source Code Files (*.*)";
+	ofn.nFilterIndex = 1;
+	ofn.lpstrFile = buffer;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.Flags = OFN_ENABLESIZING | OFN_FILEMUSTEXIST | OFN_NONETWORKBUTTON | OFN_PATHMUSTEXIST;
+	ofn.lpstrDefExt = L".txt";
+
+	m_pStatusBar->SetText(L"Browsing files...", 0);
+
+	if (GetOpenFileName(&ofn))
+	{
+		m_pWorkArea->CreateTab(ofn.lpstrFile);
+		m_pStatusBar->SetText(L"File opened.", 0);
+	}
+
+	else 
+	{
+		m_pStatusBar->SetText(L"Browsing operation cancelled.", 0);
 	}
 
 	return 0;

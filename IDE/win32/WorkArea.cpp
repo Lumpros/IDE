@@ -303,7 +303,14 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 			}
 			
 			// Move the tab to the closed tabs
-			m_ClosedTabs.push_back(m_Tabs[i]);
+			if (!m_Tabs[i]->IsTemporary()) {
+				m_ClosedTabs.push_back(m_Tabs[i]);
+			}
+
+			else {
+				delete m_Tabs[i];
+			}
+
 			m_Tabs.erase(m_Tabs.begin() + i);
 
 			break;
@@ -420,7 +427,7 @@ void WorkArea::CloseAllTabs(void)
 	m_SourceIndex = NO_TABS_AVAILABLE;
 }
 
-void WorkArea::CreateTab(wchar_t* lpszFileName)
+SourceTab* WorkArea::CreateTab(wchar_t* lpszFileName)
 {
 	if (m_SourceIndex != NO_TABS_AVAILABLE && m_SourceIndex < (int)m_Tabs.size())
 	{
@@ -434,6 +441,17 @@ void WorkArea::CreateTab(wchar_t* lpszFileName)
 
 	m_Tabs.back()->Select();
 	m_SourceIndex = m_Tabs.size() - 1;
+
+	return pSourceTab;
+}
+
+SourceTab* WorkArea::CreateTemporaryTab(wchar_t* lpszFileName)
+{
+	SourceTab* pTemporaryTab = this->CreateTab(lpszFileName);
+
+	pTemporaryTab->SetTemporary(true);
+
+	return pTemporaryTab;
 }
 
 int WorkArea::GetSelectedTabIndex(void) const

@@ -33,6 +33,7 @@ private:
 	HWND m_hAbsolutePathTooltip = nullptr;
 	bool m_IsSelected = false;
 	bool m_IsTrackingMouse = false;
+	bool m_IsTemporary = false;
 
 public:
 	explicit SourceTab(HWND hParentWindow);
@@ -49,7 +50,9 @@ public:
 	void HideCloseButton(void) const;
 	void SetEditTextToContentsOfFile(LPCWSTR lpPath);
 	void RemoveAsteriskFromDisplayedName(void);
+	void SetTemporary(bool temporary);
 	int GetRequiredTabWidth(void) const;
+	bool IsTemporary(void) const;
 
 	const wchar_t* GetPath(void) const {
 		return m_sInfo.lpszFileName;
