@@ -311,7 +311,19 @@ LRESULT AppWindow::OnDPIChanged(HWND hWnd, LPARAM lParam)
 
 LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 {
-	switch (LOWORD(wParam))
+	const WPARAM wIdentifier = LOWORD(wParam);
+
+	if (wIdentifier >= ID_FILE_CLOSE && wIdentifier <= ID_FILE_RECENTFILES)
+	{
+		return HandleFileMenuCommands(hWnd, wIdentifier);
+	}
+
+	return 0;
+}
+
+LRESULT AppWindow::HandleFileMenuCommands(HWND hWnd, WPARAM wIdentifier)
+{
+	switch (wIdentifier)
 	{
 	case ID_FILE_OPEN_FOLDER:
 		return OnOpenFolder(hWnd);
@@ -346,7 +358,7 @@ LRESULT AppWindow::OnOpenFile(void)
 	ZeroMemory(&ofn, sizeof(OPENFILENAME));
 	ofn.lStructSize = sizeof(OPENFILENAME);
 	ofn.hwndOwner = m_hWndSelf;
-	ofn.lpstrFilter = L"Source Code Files (*.*)";
+	ofn.lpstrFilter = L"Source Code Files (*.*)\0*.*\0";
 	ofn.nFilterIndex = 1;
 	ofn.lpstrFile = buffer;
 	ofn.nMaxFile = MAX_PATH;
@@ -369,7 +381,7 @@ LRESULT AppWindow::OnOpenFile(void)
 	return 0;
 }
 
-static int CALLBACK BrowseFolderCallback(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
+static INT CALLBACK BrowseFolderCallback(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
 {
 	if (uMsg == BFFM_INITIALIZED) 
 	{
@@ -422,13 +434,23 @@ LRESULT AppWindow::OnOpenFolder(HWND hWnd)
 
 LRESULT AppWindow::OnCloseProject(void)
 {
-	if (TreeView_GetCount(m_pExplorer->GetTreeHandle()) > 0)
-	{
-		m_pStatusBar->SetText(L"Closing Project...", 0);
-		m_pExplorer->CloseProjectFolder();
-		m_pWorkArea->CloseAllTabs();
-		m_pStatusBar->SetText(L"Project folder closed.", 0);
+	const wchar_t* lpszCloseMessage = L"Closing files...";
+	const wchar_t* lpszSuccessMessage = L"All files closed.";
+
+	if (TreeView_GetCount(m_pExplorer->GetTreeHandle()) > 0) {
+		lpszCloseMessage = L"Closing folders and files...";
+		lpszSuccessMessage = L"All folders and files closed.";
 	}
+
+	m_pStatusBar->SetText(lpszCloseMessage, 0);
+	m_pExplorer->CloseProjectFolder();
+
+	if (!m_pWorkArea->GetVisibleTabs().empty() || !m_pWorkArea->GetHiddenTabs().empty())
+	{
+		m_pWorkArea->CloseAllTabs();
+	}
+
+	m_pStatusBar->SetText(lpszSuccessMessage, 0);
 
 	return 0;
 }

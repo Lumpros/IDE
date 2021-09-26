@@ -308,6 +308,7 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 			}
 
 			else {
+				DestroyWindow(m_Tabs[i]->GetHandle());
 				delete m_Tabs[i];
 			}
 

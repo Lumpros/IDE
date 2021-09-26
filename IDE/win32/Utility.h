@@ -74,4 +74,10 @@ namespace Utility
 	extern void DrawTextCentered(HDC hDC, const RECT& rc, const wchar_t* lpszText);
 
 	extern bool IsPathDirectory(const std::wstring& path);
+
+	extern HTREEITEM AddToTree(HWND hTreeView, HTREEITEM hParent, LPWSTR lpszItem, bool isDirectory);
+
+	extern HTREEITEM SetItemAsTreeRoot(HWND hTreeView, LPWSTR lpszItem);
+
+	extern void DeleteDirectory(const wchar_t* lpszDirectory);
 }

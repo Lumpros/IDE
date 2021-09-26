@@ -24,13 +24,14 @@ private:
 	LRESULT OnMouseMove(HWND hWnd);
 	LRESULT OnMouseLeave(HWND hWnd);
 	LRESULT OnDrawItem(HWND hWnd, LPARAM lParam);
-	LRESULT OnSize(HWND hWnd);
+	LRESULT OnSize(HWND hWnd, LPARAM lParam);
 	LRESULT OnCommand(HWND hWnd, WPARAM wParam);
 
 	COLORREF crButton = RGB(0xFF, 0, 0);
 	SourceInfo m_sInfo;
 	HWND m_hCloseButton = nullptr;
 	HWND m_hAbsolutePathTooltip = nullptr;
+	HWND m_hTooltip = nullptr;
 	bool m_IsSelected = false;
 	bool m_IsTrackingMouse = false;
 	bool m_IsTemporary = false;

@@ -142,3 +142,70 @@ bool Utility::IsPathDirectory(const std::wstring& path)
 
 	return s.st_mode & S_IFDIR;
 }
+
+HTREEITEM Utility::AddToTree(HWND hTreeView, HTREEITEM hParent, LPWSTR lpszItem, bool isDirectory)
+{
+	TVITEM tvItem = {};
+	tvItem.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+	tvItem.pszText = lpszItem;
+	tvItem.cchTextMax = lstrlen(lpszItem);
+	tvItem.iImage = isDirectory ? 0 : 1;
+	tvItem.iSelectedImage = isDirectory ? 0 : 1;
+
+	TVINSERTSTRUCT tvInsert = {};
+	tvInsert.item = tvItem;
+	tvInsert.hInsertAfter = TreeView_GetPrevSibling(hTreeView, TreeView_GetChild(hTreeView, hParent));
+	tvInsert.hParent = hParent;
+
+	return TreeView_InsertItem(hTreeView, &tvInsert);
+}
+
+HTREEITEM Utility::SetItemAsTreeRoot(HWND hTreeView, LPWSTR lpszItem)
+{
+	TVITEM tvItem = {};
+	tvItem.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+	tvItem.cchTextMax = lstrlen(lpszItem);
+	tvItem.pszText = lpszItem;
+	tvItem.iImage = 0;
+	tvItem.iSelectedImage = 0;
+
+	TVINSERTSTRUCT tvInsert = {};
+	tvInsert.hParent = TVI_ROOT;
+	tvInsert.hInsertAfter = TVI_FIRST;
+	tvInsert.item = tvItem;
+
+	return TreeView_InsertItem(hTreeView, &tvInsert);
+}
+
+void Utility::DeleteDirectory(const wchar_t* lpszDirectory)
+{
+	std::wstring wstr = lpszDirectory;
+	wstr.append(L"\\*");
+
+	WIN32_FIND_DATA find_data;
+	HANDLE hFind = FindFirstFile(wstr.c_str(), &find_data);
+
+	if (hFind != INVALID_HANDLE_VALUE)
+	{
+		do {
+			std::wstring to_delete = lpszDirectory;
+			to_delete += L'\\';
+			to_delete += find_data.cFileName;
+
+			if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			{
+				DeleteDirectory(to_delete.c_str());
+			}
+
+			else
+			{
+				DeleteFile(to_delete.c_str());
+			}
+
+		} while (FindNextFile(hFind, &find_data));
+
+		FindClose(hFind);
+	}
+
+	RemoveDirectory(lpszDirectory);
+}

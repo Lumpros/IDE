@@ -25,6 +25,8 @@ private:
 
 	HRESULT InitializeComponents(void);
 
+	LRESULT HandleFileMenuCommands(HWND hWnd, WPARAM wIdentifier);
+
 	void OpenFolderFromCommandLine(LPWSTR lpCmdLine);
 
 public:

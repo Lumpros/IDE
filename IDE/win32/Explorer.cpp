@@ -8,6 +8,8 @@
 #include <CommCtrl.h>
 #include <windowsx.h>
 #include <fstream>
+#include <ShlObj.h>
+#include <atlbase.h>
 
 #define EXPLORER_WINDOW_CLASS L"IDEExplorerWindowClass"
 
@@ -19,43 +21,16 @@
 #define IDC_CONTEXT_CUT 3003
 #define IDC_CONTEXT_DELETE 3004
 #define IDC_CONTEXT_OPEN_IN_FILE_EXPLORER 3005
+#define IDC_CONTEXT_PASTE 3006
 
 static HRESULT RegisterExplorerWindowClass(HINSTANCE hInstance);
 static LRESULT CALLBACK ExplorerWindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-static HTREEITEM AddToTree(HWND hTreeView, HTREEITEM hParent, LPWSTR lpszItem, bool isDirectory)
-{
-	TVITEM tvItem = {};
-	tvItem.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-	tvItem.pszText = lpszItem;
-	tvItem.cchTextMax = lstrlen(lpszItem);
-	tvItem.iImage = isDirectory ? 0 : 1;
-	tvItem.iSelectedImage = isDirectory ? 0 : 1;
-	
-	TVINSERTSTRUCT tvInsert = {};
-	tvInsert.item = tvItem;
-	tvInsert.hInsertAfter = TreeView_GetPrevSibling(hTreeView, TreeView_GetChild(hTreeView, hParent));
-	tvInsert.hParent = hParent;
-
-	return TreeView_InsertItem(hTreeView, &tvInsert);
-}
-
-static HTREEITEM SetItemAsTreeRoot(HWND hTreeView, LPWSTR lpszItem)
-{
-	TVITEM tvItem = {};
-	tvItem.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-	tvItem.cchTextMax = lstrlen(lpszItem);
-	tvItem.pszText = lpszItem;
-	tvItem.iImage = 0;
-	tvItem.iSelectedImage = 0;
-
-	TVINSERTSTRUCT tvInsert = {};
-	tvInsert.hParent = TVI_ROOT;
-	tvInsert.hInsertAfter = TVI_FIRST;
-	tvInsert.item = tvItem;
-
-	return TreeView_InsertItem(hTreeView, &tvInsert);
-}
+struct TABINFO {
+	SourceTab* pSourceTab = nullptr;
+	TabList* pTabList = nullptr;
+	int index = 0;
+};
 
 Explorer::Explorer(HWND hParentWindow)
 {
@@ -165,8 +140,6 @@ void Explorer::InitializeImageList(void)
 	const int size = static_cast<int>(Utility::GetScaleForDPI(m_hWndParent) * 17);
 
 	hImageList = ImageList_Create(size, size, ILC_COLOR32, 2, 0);
-
-	// Get the folder icon
 	
 	SHSTOCKICONINFO sInfo = {};
 	sInfo.cbSize = sizeof(sInfo);
@@ -481,48 +454,76 @@ void Explorer::OnNMDoubleClick(void)
 
 void Explorer::OnRClickCreateContextMenu(void)
 {
-	HMENU hRClickMenu = CreatePopupMenu();
 	POINT ptCursor, ptCursorTransformed;
 
-	std::wstring selected_item_path;
 	GetCursorPos(&ptCursor);
 
 	ptCursorTransformed = ptCursor;
 	ScreenToClient(m_hTreeWindow, &ptCursorTransformed);
 
+	std::wstring selected_item_path;
 	m_hRightClickedItem = GetClickedTreeItemPath(m_hTreeWindow, ptCursorTransformed, selected_item_path);
 
-	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_OPEN, L"Open");
-	
-	if (Utility::IsPathDirectory(selected_item_path))
+	if (m_hRightClickedItem != nullptr)
 	{
-		AppendMenu(hRClickMenu, MF_SEPARATOR, NULL, nullptr);
-		AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_OPEN_IN_FILE_EXPLORER, L"Open in File Explorer");
-		AppendMenu(hRClickMenu, MF_SEPARATOR, NULL, nullptr);
-	}
+		HMENU hRClickMenu = CreateContextMenu(selected_item_path);
 
+		TrackPopupMenu(hRClickMenu,
+			TPM_TOPALIGN,
+			ptCursor.x,
+			ptCursor.y,
+			NULL,
+			m_hWndSelf,
+			NULL
+		);
+
+		DestroyMenu(hRClickMenu);
+	}
+}
+
+HMENU Explorer::CreateContextMenu(const std::wstring& path)
+{
+	HMENU hRClickMenu = CreatePopupMenu();
+
+	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_OPEN, L"Open");
+	AppendMenu(hRClickMenu, MF_SEPARATOR, NULL, nullptr);
+	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_OPEN_IN_FILE_EXPLORER, L"Open in File Explorer");
+	AppendMenu(hRClickMenu, MF_SEPARATOR, NULL, nullptr);
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_RENAME, L"Rename");
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_COPY, L"Copy\tCtrl+C");
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_CUT, L"Cut\tCtrl+X");
+
+	if (Utility::IsPathDirectory(path)) 
+	{
+		UINT uFlags = MF_STRING;
+
+		if (!m_Clipboard.CanPasteToDirectory())
+		{
+			uFlags |= MF_GRAYED;
+		}
+
+		AppendMenu(hRClickMenu, uFlags, IDC_CONTEXT_PASTE, L"Paste\tCtrl+V");
+	}
+
 	AppendMenu(hRClickMenu, MF_SEPARATOR, NULL, nullptr);
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_DELETE, L"Delete\tDel");
 
-	TrackPopupMenu(hRClickMenu,
-		TPM_TOPALIGN,
-		ptCursor.x,
-		ptCursor.y,
-		NULL,
-		m_hWndSelf,
-		NULL
-	);
-
-	DestroyMenu(hRClickMenu);
+	return hRClickMenu;
 }
 
 LRESULT Explorer::OnCommand(HWND hWnd, WPARAM wParam)
 {
 	switch (wParam)
 	{
+	case IDC_CONTEXT_COPY:
+		OnCopy();
+		break;
+
+	case IDC_CONTEXT_CUT:
+		m_hItemToCut = m_hRightClickedItem;
+		m_Clipboard.Cut(this);
+		break;
+
 	case IDC_CONTEXT_OPEN:
 		OnContextOpen();
 		break;
@@ -535,21 +536,34 @@ LRESULT Explorer::OnCommand(HWND hWnd, WPARAM wParam)
 		OnRename();
 		break;
 
+	case IDC_CONTEXT_PASTE:
+		m_Clipboard.Paste(this);
+		break;
+
 	case IDC_CONTEXT_DELETE:
-		int button_clicked = MessageBox(hWnd, L"Are you sure you want to permanently delete this item?", L"Delete item", MB_YESNO | MB_ICONEXCLAMATION);
+	{
+		int button_clicked = MessageBox(
+			hWnd,
+			L"Are you sure you want to permanently delete this item?",
+			L"Delete item",
+			MB_YESNO | MB_ICONEXCLAMATION
+		);
+
 		if (button_clicked == IDYES)
 			OnDelete();
+	}
 		break;
 	}
 
 	return 0;
 }
 
-struct TABINFO {
-	SourceTab* pSourceTab = nullptr;
-	TabList* pTabList = nullptr;
-	int index = 0;
-};
+void Explorer::OnCopy(void)
+{
+	std::wstring path;
+	this->GetItemPath(m_hTreeWindow, m_hRightClickedItem, path);
+	m_Clipboard.Copy(path.c_str());
+}
 
 static TABINFO GetSourceTabFromAbsolutePath(LPCWSTR pAbsolutePath, WorkArea* pWorkArea)
 {
@@ -606,6 +620,8 @@ static HRESULT SilentDeleteDirectory(const std::wstring& path)
 
 static void DeleteTabFromWorkArea(TABINFO& tabInfo)
 {
+	InvalidateRect(GetParent(tabInfo.pSourceTab->GetHandle()), NULL, FALSE);
+
 	tabInfo.pTabList->erase(tabInfo.pTabList->begin() + tabInfo.index);
 
 	tabInfo.pSourceTab->Hide();
@@ -666,12 +682,17 @@ void Explorer::OnDelete(void)
 
 	if (Utility::IsPathDirectory(path))
 	{
+		WorkArea* pWorkArea = GetAssociatedObject<AppWindow>(m_hWndParent)->GetWorkArea();
+
 		CloseDirectoryTabs(
 			path,
 			m_hTreeWindow,
 			m_hRightClickedItem,
-			GetAssociatedObject<AppWindow>(m_hWndParent)->GetWorkArea()
+			pWorkArea
 		);
+
+		pWorkArea->OnDPIChanged();
+		InvalidateRect(pWorkArea->GetHandle(), NULL, FALSE);
 
 		if (FAILED(SilentDeleteDirectory(path)))
 		{
@@ -722,7 +743,16 @@ void Explorer::OnOpenInFileExplorer(void)
 	std::wstring path;
 	GetItemPath(m_hTreeWindow, m_hRightClickedItem, path);
 
-	ShellExecute(NULL, L"open", path.c_str(), NULL, NULL, SW_SHOWDEFAULT);
+	const wchar_t* p_Path = path.c_str();
+	wchar_t cstr_path[MAX_PATH];
+
+	if (!Utility::IsPathDirectory(path)) {
+		lstrcpy(cstr_path, p_Path);
+		PathRemoveFileSpec(cstr_path);
+		p_Path = cstr_path;
+	}
+
+	ShellExecute(NULL, L"open", p_Path, NULL, NULL, SW_SHOWDEFAULT);
 
 	m_pStatusBar->SetText(L"Opened folder in File Explorer", 0);
 }
@@ -733,14 +763,17 @@ void Explorer::OnContextOpen(void)
 
 	HTREEITEM hClicked = GetItemPath(m_hTreeWindow, m_hRightClickedItem, selected);
 
-	if (Utility::IsPathDirectory(selected.c_str()))
+	if (hClicked != nullptr)
 	{
-		TreeView_Expand(m_hTreeWindow, hClicked, TVE_TOGGLE);
-	}
+		if (Utility::IsPathDirectory(selected.c_str()))
+		{
+			TreeView_Expand(m_hTreeWindow, hClicked, TVE_TOGGLE);
+		}
 
-	else
-	{
-		OpenTabFromFilePath(selected.c_str());
+		else
+		{
+			OpenTabFromFilePath(selected.c_str());
+		}
 	}
 }
 
@@ -852,13 +885,13 @@ void Explorer::ExploreDirectory(const wchar_t* directory, HTREEITEM hParent)
 					std::wstring new_dir = directory;
 					new_dir += L'\\';
 					new_dir += find_data.cFileName;
-					HTREEITEM hItem = AddToTree(m_hTreeWindow, hParent, find_data.cFileName, true);
+					HTREEITEM hItem = Utility::AddToTree(m_hTreeWindow, hParent, find_data.cFileName, true);
 					ExploreDirectory(new_dir.c_str(), hItem);
 				}
 
 				else
 				{
-					AddToTree(m_hTreeWindow, hParent, find_data.cFileName, false);
+					Utility::AddToTree(m_hTreeWindow, hParent, find_data.cFileName, false);
 				}
 			}
 		} while (FindNextFile(hFind, &find_data));
@@ -954,7 +987,7 @@ void Explorer::OpenProjectFolder(std::wstring folder)
 
 	m_RootDirectory = folder.substr(0, last_backslash_index + 1);
 
-	HTREEITEM hRoot = SetItemAsTreeRoot(m_hTreeWindow, const_cast<wchar_t*>(folder.c_str() + last_backslash_index + 1));
+	HTREEITEM hRoot = Utility::SetItemAsTreeRoot(m_hTreeWindow, const_cast<wchar_t*>(folder.c_str() + last_backslash_index + 1));
 
 	ExploreDirectory(folder.c_str(), hRoot);
 

@@ -4,7 +4,6 @@
 #include "WorkArea.h"
 #include "AppWindow.h"
 
-
 #include <fstream>
 #include <sstream>
 #include <codecvt>
@@ -18,6 +17,10 @@ static LRESULT CALLBACK SourceTabWindowProcedure(HWND hWnd, UINT uMsg, WPARAM wP
 
 SourceTab::~SourceTab(void)
 {
+	DestroyWindow(m_sInfo.m_pSourceEdit->GetHandle());
+	DestroyWindow(m_hCloseButton);
+	DestroyWindow(m_hTooltip);
+
 	SAFE_DELETE_PTR(m_sInfo.m_pSourceEdit);
 
 	free(m_sInfo.lpszFileName);
@@ -97,6 +100,19 @@ HRESULT SourceTab::InitializeSourceTabWindow(HINSTANCE hInstance)
 		nullptr
 	);
 
+	m_hTooltip = CreateWindowEx(
+		WS_EX_TOPMOST,
+		TOOLTIPS_CLASS,
+		nullptr,
+		WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		m_hWndSelf,
+		nullptr,
+		hInstance,
+		nullptr
+	);
+
 	return S_OK;
 }
 
@@ -171,7 +187,7 @@ LRESULT SourceTab::WindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 		return OnMouseLeave(hWnd);
 
 	case WM_SIZE:
-		return OnSize(hWnd);
+		return OnSize(hWnd, lParam);
 
 	case WM_COMMAND:
 		return OnCommand(hWnd, wParam);
@@ -309,8 +325,23 @@ LRESULT SourceTab::OnCommand(HWND hWnd, WPARAM wParam)
 	return 0;
 }
 
-LRESULT SourceTab::OnSize(HWND hWnd)
+LRESULT SourceTab::OnSize(HWND hWnd, LPARAM lParam)
 {
+	m_rcSelf.right = LOWORD(lParam);
+	m_rcSelf.bottom = HIWORD(lParam);
+
+	TOOLINFO ti = { 0 };
+	ti.cbSize = sizeof(TOOLINFO);
+	ti.uFlags = TTF_SUBCLASS;
+	ti.hwnd = m_hWndSelf;
+	ti.hinst = GetModuleHandle(NULL);
+	ti.lpszText = m_sInfo.lpszFileName;
+
+	GetClientRect(m_hWndSelf, &ti.rect);
+
+	// Associate the tooltip with the "tool" window.
+	SendMessage(m_hTooltip, TTM_ADDTOOL, 0, (LPARAM)(LPTOOLINFO)&ti);
+
 	const int iButtonSize = static_cast<int>(m_rcSelf.bottom * 0.6);
 
 	int distance = (m_rcSelf.bottom - iButtonSize) / 2;
