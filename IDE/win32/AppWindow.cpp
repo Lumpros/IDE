@@ -318,6 +318,15 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 		return HandleFileMenuCommands(hWnd, wIdentifier);
 	}
 
+	if (wIdentifier >= ID_HELP_ABOUT) 
+	{
+		ShellAbout(hWnd,
+			L"IDE",
+			L"Programmed by Lampros Staikos in C++ using the Win32 API.",
+			LoadIcon(NULL, IDI_APPLICATION)
+		);
+	}
+
 	return 0;
 }
 
@@ -344,6 +353,14 @@ LRESULT AppWindow::HandleFileMenuCommands(HWND hWnd, WPARAM wIdentifier)
 
 	case ID_FILE_SAVEALL:
 		m_pExplorer->SaveAllFiles(m_pWorkArea);
+		return 0;
+
+	case ID_FILE_NEW_FILE:
+		m_pExplorer->CreateNewFile();
+		return 0;
+
+	case ID_FILE_NEW_FOLDER:
+		m_pExplorer->CreateNewFolder();
 		return 0;
 	}
 

@@ -19,6 +19,8 @@ public:
 	void OpenProjectFolder(std::wstring folder);
 	void SaveCurrentFile(WorkArea* pWorkArea);
 	void SaveAllFiles(WorkArea* pWorkArea);
+	void CreateNewFile(void);
+	void CreateNewFolder(void);
 	HWND GetTreeHandle(void) const;
 
 	/// <summary>

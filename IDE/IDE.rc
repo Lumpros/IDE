@@ -57,6 +57,7 @@ BEGIN
         POPUP "New"
         BEGIN
             MENUITEM "File...\tCtrl+N",             ID_FILE_NEW_FILE
+            MENUITEM "Folder...\tCtrl+Shift+N",     ID_NEW_FOLDER
         END
         POPUP "Open"
         BEGIN
@@ -78,7 +79,10 @@ BEGIN
     MENUITEM "&View",                       0
     MENUITEM "&Program",                    0
     MENUITEM "&Tools",                      0
-    MENUITEM "&Help",                       0
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "About IDE",                   ID_HELP_ABOUT
+    END
 END
 
 
@@ -94,6 +98,54 @@ BEGIN
     "O",            ID_FILE_OPEN_FOLDER,    VIRTKEY, SHIFT, CONTROL, ALT, NOINVERT
     "S",            ID_FILE_SAVEALL,        VIRTKEY, SHIFT, CONTROL, NOINVERT
     "S",            ID_FILE_SAVEFILE,       VIRTKEY, CONTROL, NOINVERT
+    "N",            ID_FILE_NEW_FOLDER,     VIRTKEY, SHIFT, CONTROL, NOINVERT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ENTER_NAME_DIALOG DIALOGEX 0, 0, 180, 66
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Dialog"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,67,45,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,123,45,50,14
+    LTEXT           "Static",IDC_MESSAGE_STATIC,7,7,166,8
+    EDITTEXT        IDC_NAME_EDIT,7,20,166,14,ES_AUTOHSCROLL
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_ENTER_NAME_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 173
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 59
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_ENTER_NAME_DIALOG AFX_DIALOG_LAYOUT
+BEGIN
+    0
 END
 
 #endif    // English (United Kingdom) resources

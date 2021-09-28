@@ -3,6 +3,7 @@
 #include "Logger.h"
 #include "Utility.h"
 #include "AppWindow.h"
+#include "resource.h"
 
 #include <shellapi.h>
 #include <CommCtrl.h>
@@ -22,6 +23,8 @@
 #define IDC_CONTEXT_DELETE 3004
 #define IDC_CONTEXT_OPEN_IN_FILE_EXPLORER 3005
 #define IDC_CONTEXT_PASTE 3006
+#define IDC_CONTEXT_NEW_FILE 3007
+#define IDC_CONTEXT_NEW_FOLDER 3008
 
 static HRESULT RegisterExplorerWindowClass(HINSTANCE hInstance);
 static LRESULT CALLBACK ExplorerWindowProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -485,6 +488,16 @@ HMENU Explorer::CreateContextMenu(const std::wstring& path)
 {
 	HMENU hRClickMenu = CreatePopupMenu();
 
+	bool isDirectory = Utility::IsPathDirectory(path);
+
+	if (isDirectory) {
+		
+		HMENU hNewMenu = CreatePopupMenu();
+		AppendMenu(hNewMenu, MF_STRING, IDC_CONTEXT_NEW_FILE, L"New file...\tCtrl+N");
+		AppendMenu(hNewMenu, MF_STRING, IDC_CONTEXT_NEW_FOLDER, L"New folder...\tCtrl+Shift+N");
+		AppendMenu(hRClickMenu, MF_POPUP, (UINT_PTR)hNewMenu, L"New");
+	}
+
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_OPEN, L"Open");
 	AppendMenu(hRClickMenu, MF_SEPARATOR, NULL, nullptr);
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_OPEN_IN_FILE_EXPLORER, L"Open in File Explorer");
@@ -493,7 +506,7 @@ HMENU Explorer::CreateContextMenu(const std::wstring& path)
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_COPY, L"Copy\tCtrl+C");
 	AppendMenu(hRClickMenu, MF_STRING, IDC_CONTEXT_CUT, L"Cut\tCtrl+X");
 
-	if (Utility::IsPathDirectory(path)) 
+	if (isDirectory)
 	{
 		UINT uFlags = MF_STRING;
 
@@ -538,6 +551,16 @@ LRESULT Explorer::OnCommand(HWND hWnd, WPARAM wParam)
 
 	case IDC_CONTEXT_PASTE:
 		m_Clipboard.Paste(this);
+		break;
+
+	case IDC_CONTEXT_NEW_FILE:
+		TreeView_SelectItem(m_hTreeWindow, m_hRightClickedItem);
+		this->CreateNewFile();
+		break;
+
+	case IDC_CONTEXT_NEW_FOLDER:
+		TreeView_SelectItem(m_hTreeWindow, m_hRightClickedItem);
+		this->CreateNewFolder();
 		break;
 
 	case IDC_CONTEXT_DELETE:
@@ -992,6 +1015,244 @@ void Explorer::OpenProjectFolder(std::wstring folder)
 	ExploreDirectory(folder.c_str(), hRoot);
 
 	TreeView_Expand(m_hTreeWindow, hRoot, TVE_EXPAND | TVE_EXPANDPARTIAL);
+}
+
+enum class SIFD_CODE {
+	SUCCESS,
+	FAILED,
+	FILE_ALREADY_EXISTS,
+	ACCESS_DENIED,
+	NAME_CONTAINS_INVALID_CHARS,
+	NULL_DATA
+};
+
+enum class ItemType {
+	FILE, FOLDER
+};
+
+struct EnterNameDialogData {
+	const wchar_t* lpszTitle = nullptr;
+	const wchar_t* lpszStatic = nullptr;
+	wchar_t* lpszNewItemName = nullptr; // out
+	ItemType type = ItemType::FILE;
+	HTREEITEM hParentItem = nullptr;
+	HWND hTree = nullptr;
+	Explorer* pExplorer = nullptr;
+};
+
+static SIFD_CODE CreateItem(const std::wstring& absolute_path, ItemType type)
+{
+	if (type == ItemType::FOLDER) {
+		CreateDirectory(absolute_path.c_str(), NULL);
+		return SIFD_CODE::SUCCESS;
+	}
+
+	HANDLE hFile = CreateFile(
+		absolute_path.c_str(),
+		GENERIC_WRITE,
+		NULL,
+		NULL,
+		CREATE_NEW,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL
+	);
+
+	if (hFile == INVALID_HANDLE_VALUE) {
+		return SIFD_CODE::FAILED;
+	}
+
+	CloseHandle(hFile);
+
+	return SIFD_CODE::SUCCESS;
+}
+
+static SIFD_CODE SaveItemFromDialog(HWND hWnd, EnterNameDialogData* pData)
+{
+	if (pData != nullptr) 
+	{
+		wchar_t lpszBuffer[128];
+		GetDlgItemText(hWnd, IDC_NAME_EDIT, lpszBuffer, 128);
+
+		if (FileNameContainsInvalidCharacters(lpszBuffer)) 
+		{
+			return SIFD_CODE::NAME_CONTAINS_INVALID_CHARS;
+		}
+
+		std::wstring absolute_path;
+		pData->pExplorer->GetItemPath(pData->hTree, pData->hParentItem, absolute_path);
+
+		absolute_path = absolute_path + L"\\" + lpszBuffer;
+			
+		if (PathFileExists(absolute_path.c_str()))
+		{
+			return SIFD_CODE::FILE_ALREADY_EXISTS;
+		}
+
+		return CreateItem(absolute_path, pData->type);
+	}
+
+	return SIFD_CODE::NULL_DATA;
+}
+
+static void OnCommand(HWND hWnd, WPARAM wParam, EnterNameDialogData* pData)
+{
+	const wchar_t* lpszInvalidCharactersMsg = (pData->type == ItemType::FILE) ?
+		L"File name contains invalid characters." :
+		L"Folder name contains invalid characters.";
+
+	const wchar_t* lpszInvalidCharacterTitle = (pData->type == ItemType::FILE) ?
+		L"Unable to create file" :
+		L"Unable to create folder";
+
+	switch (wParam)
+	{
+	case IDOK:
+		switch (SaveItemFromDialog(hWnd, pData))
+		{
+		case SIFD_CODE::SUCCESS:
+			wchar_t lpszBuffer[128];
+			GetDlgItemText(hWnd, IDC_NAME_EDIT, lpszBuffer, 128);
+			pData->lpszNewItemName = _wcsdup(lpszBuffer);
+			EndDialog(hWnd, IDOK);
+			break;
+
+		case SIFD_CODE::NAME_CONTAINS_INVALID_CHARS:
+			MessageBox(
+				hWnd,
+				lpszInvalidCharactersMsg,
+				lpszInvalidCharacterTitle,
+				MB_OK | MB_ICONERROR
+			);
+			break;
+
+		case SIFD_CODE::FILE_ALREADY_EXISTS:
+			MessageBox(
+				hWnd,
+				L"File/Folder already exists.",
+				lpszInvalidCharacterTitle,
+				MB_OK | MB_ICONERROR
+			);
+			break;
+
+		case SIFD_CODE::ACCESS_DENIED:
+			MessageBox(
+				hWnd,
+				L"Access denied",
+				lpszInvalidCharacterTitle,
+				MB_OK | MB_ICONERROR
+			);
+			break;
+
+		case SIFD_CODE::FAILED:
+			MessageBox(
+				hWnd,
+				L"Creation failed!",
+				lpszInvalidCharacterTitle,
+				MB_OK | MB_ICONERROR
+			);
+			Logger::Write(L"%s creation failed! Error Code: %d", pData->type == ItemType::FILE ? "File" : "Folder", GetLastError());
+			break;
+
+		case SIFD_CODE::NULL_DATA:
+			MessageBox(
+				hWnd,
+				L"Error",
+				L"Data passed to EnterNameDialogProcedure is NULL",
+				MB_OK | MB_ICONERROR
+			);
+			break;
+		}
+		break;
+
+	case IDCLOSE:
+		EndDialog(hWnd, IDCANCEL);
+		break;
+	}
+}
+
+static INT_PTR CALLBACK EnterNameDialogProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	static EnterNameDialogData* pData = nullptr;
+
+	switch (uMsg)
+	{
+	case WM_INITDIALOG: {
+		pData = reinterpret_cast<EnterNameDialogData*>(lParam);
+		SetWindowText(hWnd, pData->lpszTitle);
+		SetDlgItemText(hWnd, IDC_MESSAGE_STATIC, pData->lpszStatic);
+		SetFocus(GetDlgItem(hWnd, IDC_NAME_EDIT));
+		return 0;
+	}
+
+	case WM_CLOSE:
+		EndDialog(hWnd, IDCLOSE);
+		return 0;
+
+	case WM_COMMAND:
+		OnCommand(hWnd, wParam, pData);
+		return 0;
+	}
+
+	return 0;
+}
+
+void Explorer::CreateNewFile(void)
+{
+	HTREEITEM hItem = TreeView_GetSelection(m_hTreeWindow);
+
+	if (hItem != nullptr) 
+	{
+		EnterNameDialogData data;
+		data.lpszTitle = L"Create new file";
+		data.lpszStatic = L"Enter the name of the new file:";
+		data.hParentItem = hItem;
+		data.type = ItemType::FILE;
+		data.pExplorer = this;
+		data.hTree = m_hTreeWindow;
+
+		INT_PTR status = DialogBoxParam(
+			GetModuleHandle(NULL),
+			MAKEINTRESOURCE(IDD_ENTER_NAME_DIALOG),
+			m_hWndSelf,
+			EnterNameDialogProcedure,
+			(LPARAM)&data
+		);
+
+		if (status == IDOK) {
+			Utility::AddToTree(m_hTreeWindow, hItem, data.lpszNewItemName, false);
+			UpdateWindow(m_hTreeWindow);
+			free(data.lpszNewItemName);
+		}
+	}
+}
+
+void Explorer::CreateNewFolder(void)
+{
+	HTREEITEM hItem = TreeView_GetSelection(m_hTreeWindow);
+
+	if (hItem != nullptr)
+	{
+		EnterNameDialogData data;
+		data.lpszTitle = L"Create new folder";
+		data.lpszStatic = L"Enter the name of the new folder:";
+		data.hParentItem = hItem;
+		data.type = ItemType::FOLDER;
+		data.pExplorer = this;
+		data.hTree = m_hTreeWindow;
+
+		INT_PTR status = DialogBoxParam(
+			GetModuleHandle(NULL),
+			MAKEINTRESOURCE(IDD_ENTER_NAME_DIALOG),
+			m_hWndSelf,
+			EnterNameDialogProcedure,
+			(LPARAM)&data
+		);
+
+		if (status == IDOK) {
+			Utility::AddToTree(m_hTreeWindow, hItem, data.lpszNewItemName, true);
+			free(data.lpszNewItemName);
+		}
+	}
 }
 
 static LRESULT OnCreate(HWND hWnd, LPARAM lParam)
