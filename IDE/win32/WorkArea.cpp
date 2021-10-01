@@ -279,6 +279,15 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 		pSourceTab->GetSourceEdit()->Hide();
 	}
 
+	if (m_Tabs.size() == 1) 
+	{
+		StatusBar* pStatusBar = GetAssociatedObject<AppWindow>(m_hWndParent)->GetStatusBar();
+
+		if (pStatusBar) {
+			pStatusBar->ClearEditorInformation();
+		}
+	}
+
 	size_t index = 0;
 	size_t iTabWidth = static_cast<size_t>(80 * Utility::GetScaleForDPI(m_hWndParent));
 
@@ -426,6 +435,12 @@ void WorkArea::CloseAllTabs(void)
 	m_ClosedTabs.clear();
 
 	m_SourceIndex = NO_TABS_AVAILABLE;
+
+	StatusBar* pStatusBar = GetAssociatedObject<AppWindow>(m_hWndParent)->GetStatusBar();
+
+	if (pStatusBar) {
+		pStatusBar->ClearEditorInformation();
+	}
 }
 
 SourceTab* WorkArea::CreateTab(wchar_t* lpszFileName)

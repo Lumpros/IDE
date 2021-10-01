@@ -388,8 +388,7 @@ void SourceTab::Select(void)
 		RECT rcParent;
 		GetClientRect(m_hWndParent, &rcParent);
 
-		RECT rcStatusBar;
-		GetClientRect(pAppWindow->GetStatusBar()->GetHandle(), &rcStatusBar);
+		RECT rcStatusBar = pAppWindow->GetStatusBar()->GetRefreshedRect();
 
 		m_sInfo.m_pSourceEdit->SetPos(0, m_rcSelf.bottom + offset);
 		m_sInfo.m_pSourceEdit->SetSize(
@@ -397,6 +396,11 @@ void SourceTab::Select(void)
 			rcParent.bottom - rcStatusBar.bottom + 3
 		);
 		m_sInfo.m_pSourceEdit->Show();
+		m_sInfo.m_pSourceEdit->RefreshStatusBarText();
+
+		StatusBar* pStatusBar = pAppWindow->GetStatusBar();
+		pStatusBar->SetText(L"Windows (CRLF)", 3);
+		pStatusBar->SetText(L"UTF-8", 4);
 
 		m_IsSelected = true;
 		InvalidateRect(m_hWndSelf, NULL, TRUE);

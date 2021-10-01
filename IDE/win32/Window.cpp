@@ -49,3 +49,8 @@ void Window::Hide(void)
 {
 	ShowWindow(m_hWndSelf, SW_HIDE);
 }
+
+bool Window::IsVisible(void) const
+{
+	return GetWindowLong(m_hWndSelf, GWL_STYLE) & WS_VISIBLE;
+}

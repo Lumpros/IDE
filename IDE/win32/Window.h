@@ -20,5 +20,7 @@ public:
 
 	void Show(void);
 	void Hide(void);
+
+	bool IsVisible(void) const;
 };
 

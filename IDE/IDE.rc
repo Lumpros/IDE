@@ -75,8 +75,11 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "Exit\tAlt+F4",                ID_FILE_EXIT
     END
-    MENUITEM "&Edit",                       0
-    MENUITEM "&View",                       0
+    MENUITEM "&Edit",                       ID_EDIT
+    POPUP "&View"
+    BEGIN
+        MENUITEM "Status Bar\tCtrl+Alt+S",      ID_VIEW_STATUSBAR
+    END
     MENUITEM "&Program",                    0
     MENUITEM "&Tools",                      0
     POPUP "&Help"

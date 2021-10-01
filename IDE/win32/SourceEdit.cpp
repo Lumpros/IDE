@@ -2,6 +2,7 @@
 #include "WorkArea.h"
 #include "ColorFormatParser.h"
 #include "Utility.h"
+#include "AppWindow.h"
 
 #include <Richedit.h>
 #include <CommCtrl.h>
@@ -86,11 +87,10 @@ static double GetZoomScale(HWND hWnd)
 {
 	int numerator = 0, denominator = 0;
 
-	SendMessage(
-		hWnd, EM_GETZOOM,
-		reinterpret_cast<WPARAM>(&numerator),
-		reinterpret_cast<LPARAM>(&denominator)
-	);
+	SendMessage(hWnd,
+		        EM_GETZOOM,
+		        reinterpret_cast<WPARAM>(&numerator),
+		        reinterpret_cast<LPARAM>(&denominator));
 
 	if (0 == denominator)
 	{
@@ -238,8 +238,42 @@ static LRESULT OnKeyDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	return DefSubclassProc(hWnd, WM_KEYDOWN, wParam, lParam);
 }
 
+static BOOL SelectionHasChanged(UINT message, LPARAM lParam)
+{
+	if (message == WM_SETCURSOR)
+	{
+		return HIWORD(lParam) != WM_MOUSEMOVE;
+	}
+
+	return TRUE;
+}
+
 LRESULT CALLBACK SourceEditSubclassProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR dwRefData)
 {
+	SourceEdit* pSource = reinterpret_cast<SourceEdit*>(dwRefData);
+
+	switch (uMsg)
+	{
+	case WM_CHAR:
+	case WM_KEYDOWN:
+	case WM_KEYUP:
+	case WM_LBUTTONDOWN:
+	case WM_LBUTTONUP:
+	case WM_LBUTTONDBLCLK:
+	case WM_RBUTTONDOWN:
+	case WM_RBUTTONUP:
+	case WM_RBUTTONDBLCLK:
+	case WM_MBUTTONDOWN:
+	case WM_MBUTTONUP:
+	case WM_MBUTTONDBLCLK:
+	case EM_SETSEL:
+	case EM_EXSETSEL:
+		if (SelectionHasChanged(uMsg, lParam)) {
+			pSource->RefreshStatusBarText();
+		}
+		break;
+	}
+
 	switch (uMsg)
 	{
 	case WM_CHAR:
@@ -250,6 +284,11 @@ LRESULT CALLBACK SourceEditSubclassProcedure(HWND hWnd, UINT uMsg, WPARAM wParam
 
 	case WM_KEYDOWN:
 		return OnKeyDown(hWnd, wParam, lParam);
+
+	case WM_MOUSEWHEEL:
+		LRESULT ret = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+		pSource->HandleMouseWheel(wParam);
+		return ret;
 	}
 
 	return DefSubclassProc(hWnd, uMsg, wParam, lParam);
@@ -261,6 +300,7 @@ LRESULT CALLBACK SourceEditSubclassProcedure(HWND hWnd, UINT uMsg, WPARAM wParam
 /// </summary>
 /// <param name="hParentWindow"> Handle to the parent window (WorkArea) </param>
 SourceEdit::SourceEdit(HWND hParentWindow)
+	: m_Zoomer(this)
 {
 	if (!g_hasBeenParsed)
 	{
@@ -269,6 +309,10 @@ SourceEdit::SourceEdit(HWND hParentWindow)
 	}
 
 	m_hWndParent = hParentWindow;
+
+	m_pStatusBar = GetAssociatedObject<AppWindow>(GetAncestor(hParentWindow, GA_ROOT))->GetStatusBar();
+
+	m_Zoomer.AttachStatusBar(m_pStatusBar);
 
 	m_hWndSelf = CreateWindowEx(
 		0,
@@ -340,6 +384,20 @@ void SourceEdit::AdjustFontForDPI(void)
 	SendMessage(m_hWndSelf, WM_SETFONT, (WPARAM)m_hFont, 0);
 }
 
+void SourceEdit::SetLineColumnStatusBar(void)
+{
+	CHARRANGE cr;
+	SendMessage(m_hWndSelf, EM_EXGETSEL, NULL, (LPARAM)&cr);
+
+	LRESULT lLineIndex = SendMessage(m_hWndSelf, EM_EXLINEFROMCHAR, 0, cr.cpMax);
+	LRESULT lColumn = cr.cpMax - SendMessage(m_hWndSelf, EM_LINEINDEX, lLineIndex, NULL);
+
+	WCHAR buf[32];
+	wsprintf(buf, L" Ln %d, Col %d", lLineIndex + 1, lColumn + 1);
+
+	m_pStatusBar->SetText(buf, 1);
+}
+
 void SourceEdit::MarkAsEdited(void)
 {
 	m_haveContentsBeenEdited = true;
@@ -348,6 +406,20 @@ void SourceEdit::MarkAsEdited(void)
 void SourceEdit::MarkAsUnedited(void)
 {
 	m_haveContentsBeenEdited = false;
+}
+
+void SourceEdit::RefreshStatusBarText(void)
+{
+	this->SetLineColumnStatusBar();
+	m_Zoomer.SetStatusBarZoomText();
+}
+
+void SourceEdit::HandleMouseWheel(WPARAM wParam)
+{
+	if ((LOWORD(wParam) & MK_CONTROL) == MK_CONTROL)
+	{
+		m_Zoomer.Update(GET_WHEEL_DELTA_WPARAM(wParam));
+	}
 }
 
 SourceEdit::~SourceEdit(void)

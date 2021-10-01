@@ -162,6 +162,7 @@
     <ClInclude Include="win32\Window.h" />
     <ClInclude Include="win32\Wordifier.h" />
     <ClInclude Include="win32\WorkArea.h" />
+    <ClInclude Include="win32\Zoomer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="win32\Application.cpp" />
@@ -182,6 +183,7 @@
     <ClCompile Include="win32\Window.cpp" />
     <ClCompile Include="win32\Wordifier.cpp" />
     <ClCompile Include="win32\WorkArea.cpp" />
+    <ClCompile Include="win32\Zoomer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

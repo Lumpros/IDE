@@ -1015,6 +1015,8 @@ void Explorer::OpenProjectFolder(std::wstring folder)
 	ExploreDirectory(folder.c_str(), hRoot);
 
 	TreeView_Expand(m_hTreeWindow, hRoot, TVE_EXPAND | TVE_EXPANDPARTIAL);
+
+	SetCurrentDirectory(folder.c_str());
 }
 
 enum class SIFD_CODE {
@@ -1202,26 +1204,38 @@ void Explorer::CreateNewFile(void)
 
 	if (hItem != nullptr) 
 	{
-		EnterNameDialogData data;
-		data.lpszTitle = L"Create new file";
-		data.lpszStatic = L"Enter the name of the new file:";
-		data.hParentItem = hItem;
-		data.type = ItemType::FILE;
-		data.pExplorer = this;
-		data.hTree = m_hTreeWindow;
+		std::wstring path;
+		GetItemPath(m_hTreeWindow, hItem, path);
 
-		INT_PTR status = DialogBoxParam(
-			GetModuleHandle(NULL),
-			MAKEINTRESOURCE(IDD_ENTER_NAME_DIALOG),
-			m_hWndSelf,
-			EnterNameDialogProcedure,
-			(LPARAM)&data
-		);
+		if (Utility::IsPathDirectory(path))
+		{
+			EnterNameDialogData data;
+			data.lpszTitle = L"Create new file";
+			data.lpszStatic = L"Enter the name of the new file:";
+			data.hParentItem = hItem;
+			data.type = ItemType::FILE;
+			data.pExplorer = this;
+			data.hTree = m_hTreeWindow;
 
-		if (status == IDOK) {
-			Utility::AddToTree(m_hTreeWindow, hItem, data.lpszNewItemName, false);
-			UpdateWindow(m_hTreeWindow);
-			free(data.lpszNewItemName);
+			INT_PTR status = DialogBoxParam(
+				GetModuleHandle(NULL),
+				MAKEINTRESOURCE(IDD_ENTER_NAME_DIALOG),
+				m_hWndSelf,
+				EnterNameDialogProcedure,
+				(LPARAM)&data
+			);
+
+			if (status == IDOK) {
+				Utility::AddToTree(m_hTreeWindow, hItem, data.lpszNewItemName, false);
+				UpdateWindow(m_hTreeWindow);
+				free(data.lpszNewItemName);
+				m_pStatusBar->SetText(L"File created.", 0);
+			}
+
+			else
+			{
+				m_pStatusBar->SetText(L"File creation cancelled.", 0);
+			}
 		}
 	}
 }
@@ -1232,25 +1246,40 @@ void Explorer::CreateNewFolder(void)
 
 	if (hItem != nullptr)
 	{
-		EnterNameDialogData data;
-		data.lpszTitle = L"Create new folder";
-		data.lpszStatic = L"Enter the name of the new folder:";
-		data.hParentItem = hItem;
-		data.type = ItemType::FOLDER;
-		data.pExplorer = this;
-		data.hTree = m_hTreeWindow;
+		std::wstring path;
+		GetItemPath(m_hTreeWindow, hItem, path);
 
-		INT_PTR status = DialogBoxParam(
-			GetModuleHandle(NULL),
-			MAKEINTRESOURCE(IDD_ENTER_NAME_DIALOG),
-			m_hWndSelf,
-			EnterNameDialogProcedure,
-			(LPARAM)&data
-		);
+		if (Utility::IsPathDirectory(path))
+		{
+			m_pStatusBar->SetText(L"Creating folder...", 0);
 
-		if (status == IDOK) {
-			Utility::AddToTree(m_hTreeWindow, hItem, data.lpszNewItemName, true);
-			free(data.lpszNewItemName);
+			EnterNameDialogData data;
+			data.lpszTitle = L"Create new folder";
+			data.lpszStatic = L"Enter the name of the new folder:";
+			data.hParentItem = hItem;
+			data.type = ItemType::FOLDER;
+			data.pExplorer = this;
+			data.hTree = m_hTreeWindow;
+
+			INT_PTR status = DialogBoxParam(
+				GetModuleHandle(NULL),
+				MAKEINTRESOURCE(IDD_ENTER_NAME_DIALOG),
+				m_hWndSelf,
+				EnterNameDialogProcedure,
+				(LPARAM)&data
+			);
+
+			if (status == IDOK) 
+			{
+				Utility::AddToTree(m_hTreeWindow, hItem, data.lpszNewItemName, true);
+				free(data.lpszNewItemName);
+				m_pStatusBar->SetText(L"Folder created.", 0);
+			}
+
+			else 
+			{
+				m_pStatusBar->SetText(L"Folder creation cancelled.", 0);
+			}
 		}
 	}
 }

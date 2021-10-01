@@ -312,11 +312,8 @@ void OutputContainer::RestrictButtonSectorSize(LPWINDOWPOS pWindowPos, const REC
 		/* This is true only when the window is being restored after being minimized */
 		if (-pWindowPos->y != pWindowPos->cy)
 		{
-			RECT rcStatusBar;
-			GetClientRect(pStatusBar->GetHandle(), &rcStatusBar);
-
 			pWindowPos->y = 0;
-			pWindowPos->cy = rcParent.bottom - rcStatusBar.bottom;
+			pWindowPos->cy = rcParent.bottom - pStatusBar->GetRefreshedRect().bottom;
 			this->SetPos(pWindowPos->x, 0);
 		}
 	}

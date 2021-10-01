@@ -37,7 +37,13 @@ INT APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
-	Logger::SetOutputPath(L"logs.txt");
+	wchar_t lpszDirectory[128];
+	GetCurrentDirectory(128, lpszDirectory);
+
+	std::wstring output_path = lpszDirectory;
+	output_path.push_back(L'\\');
+	output_path.append(L"logs.txt");
+	Logger::SetOutputPath(output_path.c_str());
 
 	InitCommonControls();
 	COleInitialize init;

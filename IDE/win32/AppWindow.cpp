@@ -182,8 +182,7 @@ HRESULT AppWindow::InitializeComponents(void)
 
 			if (m_pOutputContainer)
 			{
-				RECT rcStatusBar;
-				GetClientRect(m_pStatusBar->GetHandle(), &rcStatusBar);
+				RECT rcStatusBar = m_pStatusBar->GetRefreshedRect();
 
 				m_pOutputContainer->SetPos(
 					m_pExplorer->GetRect().right + 3,
@@ -201,6 +200,15 @@ HRESULT AppWindow::InitializeComponents(void)
 	}
 
 	return hr;
+}
+
+void AppWindow::RefreshChildPositions(void)
+{
+	SendMessage(m_hWndSelf,
+		WM_SIZE,
+		NULL,
+		MAKELPARAM(m_rcSelf.right, m_rcSelf.bottom)
+	);
 }
 
 LRESULT AppWindow::WindowProcedure(HWND hWnd, UINT uMessage, WPARAM wParam, LPARAM lParam)
@@ -232,18 +240,18 @@ LRESULT AppWindow::OnSize(HWND hWnd, LPARAM lParam)
 	{
 		SendMessage(m_pStatusBar->GetHandle(), WM_SIZE, 0, 0);
 
-		RECT rcStatusBar;
-		GetClientRect(m_pStatusBar->GetHandle(), &rcStatusBar);
+		RECT rcStatusBar = m_pStatusBar->GetRefreshedRect();
 
 		const int iStatusBarHeight = rcStatusBar.bottom;
 
 		if (m_pExplorer)
 		{
+			RECT rcExplorer = m_pExplorer->GetRect();
 			int iExplorerWidth;
 
 			if (IsIconic(hWnd))
 			{
-				iExplorerWidth = m_pExplorer->GetRect().right;
+				iExplorerWidth = rcExplorer.right;
 			}
 
 			else
@@ -318,7 +326,12 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 		return HandleFileMenuCommands(hWnd, wIdentifier);
 	}
 
-	if (wIdentifier >= ID_HELP_ABOUT) 
+	if (wIdentifier >= ID_VIEW && wIdentifier <= ID_VIEW_STATUSBAR)
+	{
+		return HandleViewMenuCommands(hWnd, wIdentifier);
+	}
+
+	if (wIdentifier == ID_HELP_ABOUT) 
 	{
 		ShellAbout(hWnd,
 			L"IDE",
@@ -363,6 +376,34 @@ LRESULT AppWindow::HandleFileMenuCommands(HWND hWnd, WPARAM wIdentifier)
 		m_pExplorer->CreateNewFolder();
 		return 0;
 	}
+
+	return 0;
+}
+
+LRESULT AppWindow::HandleViewMenuCommands(HWND hWnd, WPARAM wIdentifier)
+{
+	switch (wIdentifier)
+	{
+	case ID_VIEW_STATUSBAR:
+		return OnViewStatusBar();
+	}
+
+	return 0;
+}
+
+LRESULT AppWindow::OnViewStatusBar(void)
+{
+	if (m_pStatusBar->IsVisible()) 
+	{
+		m_pStatusBar->Hide();
+	}
+
+	else 
+	{
+		m_pStatusBar->Show();
+	}
+
+	RefreshChildPositions();
 
 	return 0;
 }

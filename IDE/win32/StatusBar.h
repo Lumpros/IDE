@@ -10,5 +10,8 @@ public:
 	StatusBar(HWND hParentWindow);
 
 	void SetText(const wchar_t* lpszText, int index);
+	void ClearEditorInformation(void);
+
+	RECT GetRefreshedRect(void) const;
 };
 

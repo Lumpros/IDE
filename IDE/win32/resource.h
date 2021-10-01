@@ -20,14 +20,16 @@
 #define ID_FILE_RECENTFILES             40011
 #define ID_HELP                         40029
 #define ID_HELP_ABOUT                   40030
-
+#define ID_VIEW                         40034
+#define ID_VIEW_STATUSBAR               40038
+#define ID_EDIT                         40039
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        105
-#define _APS_NEXT_COMMAND_VALUE         40034
+#define _APS_NEXT_COMMAND_VALUE         40040
 #define _APS_NEXT_CONTROL_VALUE         1003
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

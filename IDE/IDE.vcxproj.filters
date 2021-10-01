@@ -71,6 +71,12 @@
     <ClInclude Include="win32\WorkArea.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="win32\FileClipboard.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="win32\Zoomer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="win32\Application.cpp">
@@ -122,6 +128,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="win32\WorkArea.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win32\FileClipboard.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="win32\Zoomer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

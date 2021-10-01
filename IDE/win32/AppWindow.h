@@ -22,12 +22,15 @@ private:
 	LRESULT OnOpenFolder(HWND hWnd);
 	LRESULT OnCloseProject(void);
 	LRESULT OnOpenFile(void);
+	LRESULT OnViewStatusBar(void);
 
 	HRESULT InitializeComponents(void);
 
 	LRESULT HandleFileMenuCommands(HWND hWnd, WPARAM wIdentifier);
+	LRESULT HandleViewMenuCommands(HWND hWnd, WPARAM wIdentifier);
 
 	void OpenFolderFromCommandLine(LPWSTR lpCmdLine);
+	void RefreshChildPositions(void);
 
 public:
 	~AppWindow(void);

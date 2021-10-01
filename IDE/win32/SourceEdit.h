@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Window.h"
+#include "StatusBar.h"
+#include "Zoomer.h"
 
 class SourceEdit : public Window
 {
@@ -8,8 +10,11 @@ private:
 	int GetLeftMargin(void) const;
 
 	HFONT m_hFont = nullptr;
+	StatusBar* m_pStatusBar = nullptr;
+	Zoomer m_Zoomer;
+	bool m_haveContentsBeenEdited = false;
 
-	bool m_haveContentsBeenEdited;
+	void SetLineColumnStatusBar(void);
 
 public:
 	explicit SourceEdit(HWND hParentWindow);
@@ -20,6 +25,9 @@ public:
 
 	void MarkAsEdited(void);
 	void MarkAsUnedited(void);
+
+	void RefreshStatusBarText(void);
+	void HandleMouseWheel(WPARAM wParam);
 
 	bool HasBeenEdited(void) const { return m_haveContentsBeenEdited; };
 };
