@@ -27,14 +27,19 @@ void Application::Run(void)
 {
 	MSG msg;
 
+	HWND hDlg = nullptr;
 	HWND hWnd = m_AppWindow.GetHandle();
+	m_AppWindow.m_pFindDialog = &hDlg;
 
 	while (GetMessage(&msg, NULL, 0, 0))
 	{
-		if (!TranslateAccelerator(hWnd, m_hAccelerator, &msg))
+		if (hDlg == nullptr || !IsDialogMessage(hDlg, &msg))
 		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+			if (!TranslateAccelerator(hWnd, m_hAccelerator, &msg))
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
 		}
 	}
 }

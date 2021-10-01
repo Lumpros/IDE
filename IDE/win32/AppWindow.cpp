@@ -18,6 +18,11 @@
 static HRESULT RegisterAppWindowClass(HINSTANCE hInstance);
 static LRESULT CALLBACK AppWindowProcedure(HWND hWnd, UINT uMessage, WPARAM wParam, LPARAM lParam);
 
+UINT g_uFindReplaceMsg;
+
+// This needs to be global otherwise the dialog commits suicide
+FINDREPLACE g_FindReplace;
+
 AppWindow::~AppWindow(void)
 {
 	SAFE_DELETE_PTR(m_pExplorer);
@@ -39,6 +44,8 @@ void AppWindow::Initialize(HINSTANCE hInstance, LPWSTR lpCmdLine)
 		Logger::CloseOutputFile();
 		ExitProcess(1);
 	}
+
+	g_uFindReplaceMsg = RegisterWindowMessage(FINDMSGSTRING);
 
 	if (FAILED(InitializeWindow(hInstance)))
 	{
@@ -187,12 +194,12 @@ HRESULT AppWindow::InitializeComponents(void)
 
 				m_pOutputContainer->SetPos(
 					m_pExplorer->GetRect().right + 3,
-					m_rcSelf.bottom * 3 / 4 + 3 - rcStatusBar.bottom
+					m_rcSelf.bottom * 2 / 3 + 3 - rcStatusBar.bottom
 				);
 
 				m_pOutputContainer->SetSize(
 					m_rcSelf.right - m_pExplorer->GetRect().right - 6,
-					m_rcSelf.bottom / 4 - 3 - rcStatusBar.bottom
+					m_rcSelf.bottom / 3 - 3 - rcStatusBar.bottom
 				);
 
 				hr = S_OK;
@@ -234,9 +241,26 @@ LRESULT AppWindow::WindowProcedure(HWND hWnd, UINT uMessage, WPARAM wParam, LPAR
 				Utility::RefreshPasteMenuButton(GetMenu(hWnd));
 		}
 		return 0;
+
+	default:
+		if (uMessage == g_uFindReplaceMsg) {
+			HandleFRMessage(hWnd, wParam, lParam);
+			return 0;
+		}
 	}
 
 	return DefWindowProc(hWnd, uMessage, wParam, lParam);
+}
+
+void AppWindow::HandleFRMessage(HWND hWnd, WPARAM wParam, LPARAM lParam)
+{
+	LPFINDREPLACE lpfr = (LPFINDREPLACE)lParam;
+
+	if (lpfr->Flags & FR_DIALOGTERM)
+		*m_pFindDialog = nullptr;
+
+	else if (lpfr->Flags & FR_FINDNEXT)
+		MessageBox(NULL, L"HELLO WORLD", L"EA SPORTS", MB_OK | MB_ICONINFORMATION);
 }
 
 LRESULT AppWindow::OnSize(HWND hWnd, LPARAM lParam)
@@ -354,6 +378,26 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 
 			case ID_EDIT_PASTE:
 				SendMessage(hEditWnd, EM_PASTESPECIAL, CF_UNICODETEXT, NULL);
+				Utility::UpdateUndoMenuButton(hEditWnd);
+				break;
+
+			case ID_EDIT_COPY:
+				SendMessage(hEditWnd, WM_COPY, NULL, NULL);
+				Utility::RefreshPasteMenuButton(GetMenu(hWnd));
+				break;
+
+			case ID_EDIT_CUT:
+				SendMessage(hEditWnd, WM_COPY, NULL, NULL);
+				SendMessage(hEditWnd, EM_REPLACESEL, TRUE, reinterpret_cast<LPARAM>(L""));
+				Utility::RefreshPasteMenuButton(GetMenu(hWnd));
+				break;
+
+			case ID_EDIT_FIND:
+				OnFind();
+				break;
+
+			case ID_EDIT_REPLACE:
+				OnReplace();
 				break;
 			}
 		}
@@ -382,6 +426,42 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 	}
 
 	return 0;
+}
+
+void AppWindow::OnFind(void)
+{
+	if (!(*m_pFindDialog)) {
+		ZeroMemory(&g_FindReplace, sizeof(g_FindReplace));
+		g_FindReplace.lStructSize = sizeof(g_FindReplace);
+		g_FindReplace.hwndOwner = m_hWndSelf;
+		g_FindReplace.lpstrFindWhat = find_buffer;
+		g_FindReplace.wFindWhatLen = FIND_BUFFER_SIZE;
+		g_FindReplace.Flags = 0;
+
+		*m_pFindDialog = FindText(&g_FindReplace);
+	}
+	else {
+		SetFocus(*m_pFindDialog);
+	}
+}
+
+void AppWindow::OnReplace(void)
+{
+	if (!(*m_pFindDialog)) {
+		ZeroMemory(&g_FindReplace, sizeof(g_FindReplace));
+		g_FindReplace.lStructSize = sizeof(g_FindReplace);
+		g_FindReplace.hwndOwner = m_hWndSelf;
+		g_FindReplace.lpstrFindWhat = find_buffer;
+		g_FindReplace.wFindWhatLen = FIND_BUFFER_SIZE;
+		g_FindReplace.lpstrReplaceWith = replace_buffer;
+		g_FindReplace.wReplaceWithLen = FIND_BUFFER_SIZE;
+		g_FindReplace.Flags = 0;
+
+		*m_pFindDialog = ReplaceText(&g_FindReplace);
+	}
+	else {
+		SetFocus(*m_pFindDialog);
+	}
 }
 
 void AppWindow::OnSelectAll(HWND hEditWnd)

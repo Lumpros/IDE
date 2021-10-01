@@ -4,6 +4,7 @@
 #include "Utility.h"
 #include "AppWindow.h"
 #include "resource.h"
+#include "SourceTab.h"
 
 #include <shellapi.h>
 #include <CommCtrl.h>
@@ -727,6 +728,7 @@ void Explorer::OnDelete(void)
 			TreeView_DeleteItem(m_hTreeWindow, m_hRightClickedItem);
 			m_hRightClickedItem = nullptr;
 			m_pStatusBar->SetText(L"Folder deleted", 0);
+			SelectTabAfterDelete(pWorkArea);
 		}
 	}
 
@@ -746,10 +748,29 @@ void Explorer::OnDelete(void)
 			DeleteTabFromWorkArea(tInfo);
 			pWorkArea->OnDPIChanged();
 		}
+
+		SelectTabAfterDelete(pWorkArea);
 	}
 
 	else {
 		m_pStatusBar->SetText(L"File deletion failed.", 0);
+	}
+}
+
+void Explorer::SelectTabAfterDelete(WorkArea* pWorkArea)
+{
+	TabList& list = pWorkArea->GetVisibleTabs();
+
+	if (!list.empty())
+	{
+		SourceTab* pTab = pWorkArea->GetSelectedTab();
+
+		if (pTab != nullptr)
+		{
+			pTab->Unselect();
+		}
+
+		list.front()->Select();
 	}
 }
 

@@ -63,6 +63,7 @@ private:
 	void OnDelete(void);
 	void OnCopy(void);
 
+	void SelectTabAfterDelete(WorkArea* pWorkArea);
 	void InitializeImageList(void);
 	HMENU CreateContextMenu(const std::wstring& path);
 

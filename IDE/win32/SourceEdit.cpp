@@ -257,6 +257,16 @@ static BOOL SelectionHasChanged(UINT message, LPARAM lParam)
 	return TRUE;
 }
 
+// CCD = Copy, Cut, Delete
+static void ToggleCCDButtons(HWND hEditWindow, UINT uEnable)
+{
+	HMENU hMenu = GetMenu(GetAncestor(hEditWindow, GA_ROOT));
+
+	EnableMenuItem(hMenu, ID_EDIT_COPY, uEnable);
+	EnableMenuItem(hMenu, ID_EDIT_CUT, uEnable);
+	EnableMenuItem(hMenu, ID_EDIT_DELETE, uEnable);
+}
+
 LRESULT CALLBACK SourceEditSubclassProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR dwRefData)
 {
 	SourceEdit* pSource = reinterpret_cast<SourceEdit*>(dwRefData);
@@ -277,8 +287,15 @@ LRESULT CALLBACK SourceEditSubclassProcedure(HWND hWnd, UINT uMsg, WPARAM wParam
 	case WM_MBUTTONDBLCLK:
 	case EM_SETSEL:
 	case EM_EXSETSEL:
+		// TODO: refresh copy/cut/replace buttons
 		if (SelectionHasChanged(uMsg, lParam)) {
 			pSource->RefreshStatusBarText();
+			CHARRANGE cr;
+			SendMessage(hWnd, EM_EXGETSEL, NULL, reinterpret_cast<LPARAM>(&cr));
+			if (cr.cpMin != cr.cpMax)
+				ToggleCCDButtons(hWnd, MF_ENABLED);
+			else
+				ToggleCCDButtons(hWnd, MF_GRAYED);
 		}
 		break;
 	}

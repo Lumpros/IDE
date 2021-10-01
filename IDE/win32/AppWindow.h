@@ -6,6 +6,8 @@
 #include "StatusBar.h"
 #include "OutputContainer.h"
 
+#define FIND_BUFFER_SIZE 128
+
 class AppWindow : public Window
 {
 private:
@@ -14,6 +16,9 @@ private:
 	WorkArea* m_pWorkArea = nullptr;
 	OutputContainer* m_pOutputContainer = nullptr;
 	StatusBar* m_pStatusBar = nullptr;
+	
+	wchar_t replace_buffer[FIND_BUFFER_SIZE];
+	wchar_t find_buffer[FIND_BUFFER_SIZE];
 
 	LRESULT OnSize(HWND hWnd, LPARAM lParam);
 	LRESULT OnGetMinMax(HWND hWnd, LPARAM lParam);
@@ -24,6 +29,9 @@ private:
 	LRESULT OnOpenFile(void);
 	LRESULT OnViewStatusBar(void);
 	void OnSelectAll(HWND hEditWnd);
+	void OnFind(void);
+	void OnReplace(void);
+	void HandleFRMessage(HWND hWnd, WPARAM wParam, LPARAM lParam);
 
 	HRESULT InitializeComponents(void);
 
@@ -37,6 +45,7 @@ public:
 	~AppWindow(void);
 
 	void Initialize(HINSTANCE hInstance, LPWSTR lpCmdLine);
+	HWND* m_pFindDialog = nullptr;
 
 	LRESULT WindowProcedure(HWND hWnd, UINT uMessage, WPARAM wParam, LPARAM lParam);
 
