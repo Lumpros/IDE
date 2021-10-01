@@ -967,10 +967,15 @@ void Explorer::SaveCurrentFile(WorkArea* pWorkArea)
 {
 	if (pWorkArea != nullptr)
 	{
-		if (pWorkArea->GetSelectedTab()->GetSourceEdit()->HasBeenEdited())
+		SourceTab* pSourceTab = pWorkArea->GetSelectedTab();
+
+		if (pSourceTab != nullptr)
 		{
-			SaveFileFromTab(pWorkArea->GetSelectedTab());
-			m_pStatusBar->SetText(L"Saved file.", 0);
+			if (pSourceTab->GetSourceEdit()->HasBeenEdited())
+			{
+				SaveFileFromTab(pSourceTab);
+				m_pStatusBar->SetText(L"Saved file.", 0);
+			}
 		}
 	}
 }
