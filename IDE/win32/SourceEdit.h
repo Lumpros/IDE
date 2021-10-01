@@ -20,6 +20,10 @@ public:
 	explicit SourceEdit(HWND hParentWindow);
 	~SourceEdit(void);
 
+	inline void ZoomIn(void) { m_Zoomer.ZoomIn(); }
+	inline void ZoomOut(void) { m_Zoomer.ZoomOut(); }
+	inline void RestoreZoom(void) { m_Zoomer.RestoreZoom(); }
+
 	void AdjustLeftMarginForDPI(void);
 	void AdjustFontForDPI(void);
 

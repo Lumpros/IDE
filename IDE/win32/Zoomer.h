@@ -18,6 +18,7 @@ public:
 	void Update(short bWheelDelta);
 	void ZoomIn(void);
 	void ZoomOut(void);
+	void RestoreZoom(void);
 	int GetZoomLevel(void) const;
 
 private:

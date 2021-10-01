@@ -325,10 +325,33 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 	{
 		return HandleFileMenuCommands(hWnd, wIdentifier);
 	}
+	
+	if (wIdentifier >= ID_EDIT && wIdentifier <= ID_EDIT_SELECTALL)
+	{
+		SourceTab* pTab = m_pWorkArea->GetSelectedTab();
+
+		if (pTab) {
+			HWND hEditWnd = pTab->GetSourceEdit()->GetHandle();
+			
+			switch (wIdentifier)
+			{
+			case ID_EDIT_UNDO:
+				SendMessage(hEditWnd, EM_UNDO, NULL, NULL);
+				Utility::UpdateUndoMenuButton(hEditWnd);
+				return 0;
+			}
+		}
+	}
 
 	if (wIdentifier >= ID_VIEW && wIdentifier <= ID_VIEW_STATUSBAR)
 	{
 		return HandleViewMenuCommands(hWnd, wIdentifier);
+	}
+
+	if (wIdentifier >= ID_ZOOM_ZOOMIN && wIdentifier <= ID_ZOOM_RESTOREDEFAULTZOOM)
+	{
+		m_pWorkArea->HandleZoomMessage(wIdentifier);
+		return 0;
 	}
 
 	if (wIdentifier == ID_HELP_ABOUT) 
@@ -357,7 +380,7 @@ LRESULT AppWindow::HandleFileMenuCommands(HWND hWnd, WPARAM wIdentifier)
 		return OnCloseProject();
 
 	case ID_FILE_EXIT:
-		PostQuitMessage(0);
+		PostQuitMessage(EXIT_SUCCESS);
 		return 0;
 
 	case ID_FILE_SAVEFILE:
@@ -393,6 +416,11 @@ LRESULT AppWindow::HandleViewMenuCommands(HWND hWnd, WPARAM wIdentifier)
 
 LRESULT AppWindow::OnViewStatusBar(void)
 {
+	HMENU hMenu = GetMenu(m_hWndSelf);
+	DWORD dwState = CheckMenuItem(hMenu, ID_VIEW_STATUSBAR, MF_BYCOMMAND);
+
+	CheckMenuItem(hMenu, ID_VIEW_STATUSBAR, dwState == MF_CHECKED ? MF_UNCHECKED : MF_CHECKED);
+
 	if (m_pStatusBar->IsVisible()) 
 	{
 		m_pStatusBar->Hide();

@@ -13,16 +13,14 @@ public:
 	explicit WorkArea(HWND hParentWindow);
 	~WorkArea(void);
 
+	void HandleZoomMessage(WPARAM wParam);
 	void OnDPIChanged(void);
 	void UnselectAllTabs(void);
 	void SelectFileFromName(wchar_t* lpszName);
 	void CloseAllTabs(void);
 	SourceTab* CreateTab(wchar_t* lpszFileName);
 
-	/// <summary>
-	/// A temporary tab is deleted after it has been closed
-	/// </summary>
-	/// <param name="lpszFileName"> Absolute path of file </param>
+	// A temporary tab is deleted after it has been closed
 	SourceTab* CreateTemporaryTab(wchar_t* lpszFileName);
 
 	TabList& GetVisibleTabs(void);

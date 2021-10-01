@@ -9,6 +9,8 @@
 // LPARAM = pointer to SourceTab
 #define WM_TAB_SELECTED (WM_APP + 2)
 
+class AppWindow;
+
 struct SourceInfo {
 	SourceEdit* m_pSourceEdit = nullptr;
 	wchar_t* lpszFileName = nullptr;
@@ -26,6 +28,9 @@ private:
 	LRESULT OnDrawItem(HWND hWnd, LPARAM lParam);
 	LRESULT OnSize(HWND hWnd, LPARAM lParam);
 	LRESULT OnCommand(HWND hWnd, WPARAM wParam);
+	void InitEditDimensions(AppWindow* pAppWindow);
+	void RefreshStatusBarInfo(AppWindow* pAppWindow);
+	void RefreshEditMenu(AppWindow* pAppWindow);
 
 	COLORREF crButton = RGB(0xFF, 0, 0);
 	SourceInfo m_sInfo;

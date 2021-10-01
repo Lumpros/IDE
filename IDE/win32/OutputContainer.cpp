@@ -255,7 +255,7 @@ LRESULT OutputContainer::OnNCHitTest(HWND hWnd)
 	RECT rcWindow;
 	GetWindowRect(hWnd, &rcWindow);
 
-	if (ptCursor.y <= rcWindow.top + 10)
+	if (ptCursor.y <= rcWindow.top + 6)
 		return HTTOP;
 
 	return HTCLIENT;

@@ -3,6 +3,7 @@
 #include "Utility.h"
 #include "WorkArea.h"
 #include "AppWindow.h"
+#include "resource.h"
 
 #include <fstream>
 #include <sstream>
@@ -379,34 +380,51 @@ void SourceTab::Select(void)
 	{
 		crButton = RGB(0xFF, 0, 0);
 
-		HWND hEditWindow = m_sInfo.m_pSourceEdit->GetHandle();
-
-		constexpr int offset = 1;
-
 		AppWindow* pAppWindow = GetAssociatedObject<AppWindow>(GetParent(m_hWndParent));
-
-		RECT rcParent;
-		GetClientRect(m_hWndParent, &rcParent);
-
-		RECT rcStatusBar = pAppWindow->GetStatusBar()->GetRefreshedRect();
-
-		m_sInfo.m_pSourceEdit->SetPos(0, m_rcSelf.bottom + offset);
-		m_sInfo.m_pSourceEdit->SetSize(
-			rcParent.right,
-			rcParent.bottom - rcStatusBar.bottom + 3
-		);
-		m_sInfo.m_pSourceEdit->Show();
-		m_sInfo.m_pSourceEdit->RefreshStatusBarText();
-
-		StatusBar* pStatusBar = pAppWindow->GetStatusBar();
-		pStatusBar->SetText(L"Windows (CRLF)", 3);
-		pStatusBar->SetText(L"UTF-8", 4);
+		InitEditDimensions(pAppWindow);
+		RefreshStatusBarInfo(pAppWindow);
+		RefreshEditMenu(pAppWindow);
 
 		m_IsSelected = true;
 		InvalidateRect(m_hWndSelf, NULL, TRUE);
 
 		SendMessage(m_hWndParent, WM_TAB_SELECTED, NULL, (LPARAM)this);
 	}
+}
+
+void SourceTab::RefreshEditMenu(AppWindow* pAppWindow)
+{
+	HMENU hMenu = GetMenu(pAppWindow->GetHandle());
+	UINT uEnable = IsClipboardFormatAvailable(CF_TEXT) ? MF_ENABLED : MF_GRAYED;
+
+	EnableMenuItem(hMenu, ID_EDIT_PASTE, uEnable | MF_BYCOMMAND);
+	
+	HWND hEditWindow = m_sInfo.m_pSourceEdit->GetHandle();
+	Utility::UpdateUndoMenuButton(hEditWindow);
+	Utility::SetMenuItemsState(hMenu, MF_ENABLED);
+}
+
+void SourceTab::RefreshStatusBarInfo(AppWindow* pAppWindow)
+{
+	StatusBar* pStatusBar = pAppWindow->GetStatusBar();
+	pStatusBar->SetText(L"Windows (CRLF)", 3);
+	pStatusBar->SetText(L"UTF-8", 4);
+}
+
+void SourceTab::InitEditDimensions(AppWindow* pAppWindow)
+{
+	RECT rcParent;
+	GetClientRect(m_hWndParent, &rcParent);
+
+	RECT rcStatusBar = pAppWindow->GetStatusBar()->GetRefreshedRect();
+
+	m_sInfo.m_pSourceEdit->SetPos(0, m_rcSelf.bottom + 1);
+	m_sInfo.m_pSourceEdit->SetSize(
+		rcParent.right,
+		rcParent.bottom - rcStatusBar.bottom + 3
+	);
+	m_sInfo.m_pSourceEdit->Show();
+	m_sInfo.m_pSourceEdit->RefreshStatusBarText();
 }
 
 void SourceTab::Unselect(void)

@@ -109,6 +109,15 @@ void Zoomer::ZoomOut(void)
 	}
 }
 
+void Zoomer::RestoreZoom(void)
+{
+	if (m_iZoomNumerator != 100)
+	{
+		m_iZoomNumerator = 100;
+		RequestZoom();
+	}
+}
+
 void Zoomer::RequestZoom(void)
 {
 	LRESULT bAccepted =	SendMessage(m_pSourceEdit->GetHandle(),

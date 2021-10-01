@@ -3,6 +3,7 @@
 #include "ColorFormatParser.h"
 #include "Utility.h"
 #include "AppWindow.h"
+#include "resource.h"
 
 #include <Richedit.h>
 #include <CommCtrl.h>
@@ -64,6 +65,8 @@ static LRESULT OnChar(HWND hWnd, WPARAM wParam, LPARAM lParam, DWORD_PTR dwRefDa
 	{
 		::MarkSourceAsEdited(pSourceEdit);
 	}
+
+	Utility::UpdateUndoMenuButton(hWnd);
 
 	return result;
 }

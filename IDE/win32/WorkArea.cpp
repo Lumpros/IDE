@@ -2,6 +2,7 @@
 #include "Logger.h"
 #include "Utility.h"
 #include "AppWindow.h"
+#include "resource.h"
 
 #include <Richedit.h>
 
@@ -282,10 +283,11 @@ LRESULT WorkArea::OnCloseTab(HWND hWnd, LPARAM lParam)
 	if (m_Tabs.size() == 1) 
 	{
 		StatusBar* pStatusBar = GetAssociatedObject<AppWindow>(m_hWndParent)->GetStatusBar();
+		pStatusBar->ClearEditorInformation();
 
-		if (pStatusBar) {
-			pStatusBar->ClearEditorInformation();
-		}
+		HMENU hMenu = GetMenu(m_hWndParent);
+		Utility::SetMenuItemsState(hMenu, MF_GRAYED);
+		EnableMenuItem(hMenu, ID_EDIT_PASTE, MF_BYCOMMAND | MF_GRAYED);
 	}
 
 	size_t index = 0;
@@ -441,6 +443,10 @@ void WorkArea::CloseAllTabs(void)
 	if (pStatusBar) {
 		pStatusBar->ClearEditorInformation();
 	}
+
+	HMENU hMenu = GetMenu(m_hWndParent);
+	Utility::SetMenuItemsState(hMenu, MF_GRAYED);
+	EnableMenuItem(hMenu, ID_EDIT_PASTE, MF_BYCOMMAND | MF_GRAYED);
 }
 
 SourceTab* WorkArea::CreateTab(wchar_t* lpszFileName)
@@ -497,6 +503,29 @@ SourceTab* WorkArea::GetSelectedTab(void)
 	}
 
 	return nullptr;
+}
+
+void WorkArea::HandleZoomMessage(WPARAM wParam)
+{
+	SourceTab* pTab = this->GetSelectedTab();
+
+	if (pTab != nullptr)
+	{
+		switch (wParam)
+		{
+		case ID_ZOOM_RESTOREDEFAULTZOOM:
+			pTab->GetSourceEdit()->RestoreZoom();
+			break;
+
+		case ID_ZOOM_ZOOMIN:
+			pTab->GetSourceEdit()->ZoomIn();
+			break;
+
+		case ID_ZOOM_ZOOMOUT:
+			pTab->GetSourceEdit()->ZoomOut();
+			break;
+		}
+	}
 }
 
 static LRESULT OnCreate(HWND hWnd, LPARAM lParam)

@@ -80,4 +80,8 @@ namespace Utility
 	extern HTREEITEM SetItemAsTreeRoot(HWND hTreeView, LPWSTR lpszItem);
 
 	extern void DeleteDirectory(const wchar_t* lpszDirectory);
+
+	extern void SetMenuItemsState(HMENU hMenu, UINT uState);
+
+	extern void UpdateUndoMenuButton(HWND hEditWindow);
 }

@@ -1,4 +1,5 @@
 #include "Utility.h"
+#include "resource.h"
 
 #include <stdlib.h>
 #include <CommCtrl.h>
@@ -208,4 +209,32 @@ void Utility::DeleteDirectory(const wchar_t* lpszDirectory)
 	}
 
 	RemoveDirectory(lpszDirectory);
+}
+
+void Utility::SetMenuItemsState(HMENU hMenu, UINT uState)
+{
+	EnableMenuItem(hMenu, ID_EDIT_FIND, uState | MF_BYCOMMAND);
+	EnableMenuItem(hMenu, ID_EDIT_FINDNEXT, uState | MF_BYCOMMAND);
+	EnableMenuItem(hMenu, ID_EDIT_FINDPREVIOUS, uState | MF_BYCOMMAND);
+	EnableMenuItem(hMenu, ID_EDIT_GOTO, uState | MF_BYCOMMAND);
+	EnableMenuItem(hMenu, ID_EDIT_REPLACE, uState | MF_BYCOMMAND);
+	EnableMenuItem(hMenu, ID_EDIT_SELECTALL, uState | MF_BYCOMMAND);
+	EnableMenuItem(hMenu, ID_ZOOM_ZOOMIN, uState | MF_BYCOMMAND);
+	EnableMenuItem(hMenu, ID_ZOOM_ZOOMOUT, uState | MF_BYCOMMAND);
+	EnableMenuItem(hMenu, ID_ZOOM_RESTOREDEFAULTZOOM, uState | MF_BYCOMMAND);
+
+	if (uState == MF_GRAYED)
+	{
+		EnableMenuItem(hMenu, ID_EDIT_UNDO, uState | MF_BYCOMMAND);
+		EnableMenuItem(hMenu, ID_EDIT_CUT, uState | MF_BYCOMMAND);
+		EnableMenuItem(hMenu, ID_EDIT_COPY, uState | MF_BYCOMMAND);
+		EnableMenuItem(hMenu, ID_EDIT_DELETE, uState | MF_BYCOMMAND);
+	}
+}
+
+void Utility::UpdateUndoMenuButton(HWND hEditWindow)
+{
+	HMENU hMenu = GetMenu(GetAncestor(hEditWindow, GA_ROOT));
+	DWORD uEnable = SendMessage(hEditWindow, EM_CANUNDO, NULL, NULL) ? MF_ENABLED : MF_GRAYED;
+	EnableMenuItem(hMenu, ID_EDIT_UNDO, MF_BYCOMMAND | uEnable);
 }
