@@ -9,6 +9,7 @@
 #include <ShlObj_core.h>
 #include <Shlwapi.h>
 #include <commdlg.h>
+#include <Richedit.h>
 
 #pragma comment(lib, "Shlwapi.lib")
 
@@ -226,6 +227,13 @@ LRESULT AppWindow::WindowProcedure(HWND hWnd, UINT uMessage, WPARAM wParam, LPAR
 
 	case WM_DPICHANGED:
 		return OnDPIChanged(hWnd, lParam);
+
+	case WM_SETFOCUS:
+		if (m_pWorkArea) {
+			if (!m_pWorkArea->GetVisibleTabs().empty())
+				Utility::RefreshPasteMenuButton(GetMenu(hWnd));
+		}
+		return 0;
 	}
 
 	return DefWindowProc(hWnd, uMessage, wParam, lParam);
@@ -338,9 +346,19 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 			case ID_EDIT_UNDO:
 				SendMessage(hEditWnd, EM_UNDO, NULL, NULL);
 				Utility::UpdateUndoMenuButton(hEditWnd);
-				return 0;
+				break;
+
+			case ID_EDIT_SELECTALL:
+				OnSelectAll(hEditWnd);
+				break;
+
+			case ID_EDIT_PASTE:
+				SendMessage(hEditWnd, EM_PASTESPECIAL, CF_UNICODETEXT, NULL);
+				break;
 			}
 		}
+
+		return 0;
 	}
 
 	if (wIdentifier >= ID_VIEW && wIdentifier <= ID_VIEW_STATUSBAR)
@@ -364,6 +382,16 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 	}
 
 	return 0;
+}
+
+void AppWindow::OnSelectAll(HWND hEditWnd)
+{
+	int iTextLength = GetWindowTextLength(hEditWnd);
+
+	if (iTextLength > 0)
+	{
+		SendMessage(hEditWnd, EM_SETSEL, (WPARAM)0, (LPARAM)iTextLength);
+	}
 }
 
 LRESULT AppWindow::HandleFileMenuCommands(HWND hWnd, WPARAM wIdentifier)

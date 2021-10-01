@@ -226,6 +226,12 @@ static LRESULT OnKeyDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
 			SendMessage(hWnd, EM_PASTESPECIAL, CF_UNICODETEXT, NULL);
 			return 0;
 
+		case 'C': {
+			LRESULT ret = DefSubclassProc(hWnd, WM_KEYDOWN, wParam, lParam);
+			Utility::RefreshPasteMenuButton(GetMenu(GetAncestor(hWnd, GA_ROOT)));
+			return ret;
+		}
+
 		default:
 			if (IsKeyPressed(VK_SHIFT))
 			{

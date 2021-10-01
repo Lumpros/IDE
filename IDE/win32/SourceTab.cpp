@@ -395,12 +395,10 @@ void SourceTab::Select(void)
 void SourceTab::RefreshEditMenu(AppWindow* pAppWindow)
 {
 	HMENU hMenu = GetMenu(pAppWindow->GetHandle());
-	UINT uEnable = IsClipboardFormatAvailable(CF_TEXT) ? MF_ENABLED : MF_GRAYED;
-
-	EnableMenuItem(hMenu, ID_EDIT_PASTE, uEnable | MF_BYCOMMAND);
 	
 	HWND hEditWindow = m_sInfo.m_pSourceEdit->GetHandle();
 	Utility::UpdateUndoMenuButton(hEditWindow);
+	Utility::RefreshPasteMenuButton(hMenu);
 	Utility::SetMenuItemsState(hMenu, MF_ENABLED);
 }
 

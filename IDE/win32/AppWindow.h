@@ -23,6 +23,7 @@ private:
 	LRESULT OnCloseProject(void);
 	LRESULT OnOpenFile(void);
 	LRESULT OnViewStatusBar(void);
+	void OnSelectAll(HWND hEditWnd);
 
 	HRESULT InitializeComponents(void);
 

@@ -84,4 +84,6 @@ namespace Utility
 	extern void SetMenuItemsState(HMENU hMenu, UINT uState);
 
 	extern void UpdateUndoMenuButton(HWND hEditWindow);
+
+	extern void RefreshPasteMenuButton(HMENU hMenu);
 }

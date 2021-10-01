@@ -238,3 +238,10 @@ void Utility::UpdateUndoMenuButton(HWND hEditWindow)
 	DWORD uEnable = SendMessage(hEditWindow, EM_CANUNDO, NULL, NULL) ? MF_ENABLED : MF_GRAYED;
 	EnableMenuItem(hMenu, ID_EDIT_UNDO, MF_BYCOMMAND | uEnable);
 }
+
+void Utility::RefreshPasteMenuButton(HMENU hMenu)
+{
+	UINT uEnable = IsClipboardFormatAvailable(CF_UNICODETEXT) ? MF_ENABLED : MF_GRAYED;
+
+	EnableMenuItem(hMenu, ID_EDIT_PASTE, uEnable | MF_BYCOMMAND);
+}
