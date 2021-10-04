@@ -6,24 +6,16 @@
 
 namespace FR
 {
-	enum class SearchDirection {
-		UP, DOWN
-	};
+	bool Find(const wchar_t* lpszFind,
+		      HWND hEditControl,
+		      DWORD dwFlags);
 
-	void Find(
-		_In_ const wchar_t* lpszTarget,
-		_In_ HWND hEditControl,
-		_In_ SearchDirection dir,
-		_In_ bool matchCase,
-		_In_ bool wrapAround
-	);
+	void Replace(const wchar_t* lpszReplace,
+		         HWND hEditControl,
+		         DWORD dwFlags);
 
-	void Replace(
-		_In_ const wchar_t* lpszTarget,
-		_In_ const wchar_t* lpszNewText,
-		_In_ HWND hEditControl,
-		_In_ SearchDirection dir,
-		_In_ bool matchCase,
-		_In_ bool wrapAround
-	);
+	void ReplaceAll(const wchar_t* lpszFind,
+		            const wchar_t* lpszReplace,
+		            HWND hEditControl,
+		            DWORD dwFlags);
 }

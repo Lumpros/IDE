@@ -150,6 +150,7 @@
     <ClInclude Include="win32\ErrorList.h" />
     <ClInclude Include="win32\Explorer.h" />
     <ClInclude Include="win32\FileClipboard.h" />
+    <ClInclude Include="win32\FindReplace.h" />
     <ClInclude Include="win32\Logger.h" />
     <ClInclude Include="win32\ODButton.h" />
     <ClInclude Include="win32\Output.h" />
@@ -171,6 +172,7 @@
     <ClCompile Include="win32\ErrorList.cpp" />
     <ClCompile Include="win32\Explorer.cpp" />
     <ClCompile Include="win32\FileClipboard.cpp" />
+    <ClCompile Include="win32\FindReplace.cpp" />
     <ClCompile Include="win32\Logger.cpp" />
     <ClCompile Include="win32\main.cpp" />
     <ClCompile Include="win32\ODButton.cpp" />

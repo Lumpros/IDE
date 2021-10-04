@@ -252,15 +252,60 @@ LRESULT AppWindow::WindowProcedure(HWND hWnd, UINT uMessage, WPARAM wParam, LPAR
 	return DefWindowProc(hWnd, uMessage, wParam, lParam);
 }
 
+#include "FindReplace.h"
+
 void AppWindow::HandleFRMessage(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
-	LPFINDREPLACE lpfr = (LPFINDREPLACE)lParam;
+	LPFINDREPLACE lpfr = reinterpret_cast<LPFINDREPLACE>(lParam);
 
+	SourceTab* pTab = m_pWorkArea->GetSelectedTab();
+
+	// Put this outside of the if statement because if the user opens the find dialog,
+	// closes all the opened tabs, closes the dialog, opens a tab, then the find
+	// dialog will not open again because it was not nulled, and therefore the program
+	// tries to set focus to a window that does not exist
 	if (lpfr->Flags & FR_DIALOGTERM)
 		*m_pFindDialog = nullptr;
 
-	else if (lpfr->Flags & FR_FINDNEXT)
-		MessageBox(NULL, L"HELLO WORLD", L"EA SPORTS", MB_OK | MB_ICONINFORMATION);
+	if (pTab != nullptr)
+	{
+		HWND hEditWindow = pTab->GetSourceEdit()->GetHandle();
+
+		if (lpfr->Flags & FR_FINDNEXT) 
+		{
+			if (!FR::Find(lpfr->lpstrFindWhat,
+				          hEditWindow,
+				          lpfr->Flags))
+			{
+				std::wstring not_found_msg = L"Cannot find \"";
+				not_found_msg.append(lpfr->lpstrFindWhat);
+				not_found_msg.push_back(L'\"');
+
+				MessageBox(
+					*m_pFindDialog, not_found_msg.c_str(), L"Editor", MB_OK | MB_ICONINFORMATION
+				);
+			}
+		}
+
+		else if (lpfr->Flags & FR_REPLACE)
+		{
+			FR::Replace(
+				lpfr->lpstrReplaceWith,
+				hEditWindow,
+				lpfr->Flags
+			);
+		}
+
+		else if (lpfr->Flags & FR_REPLACEALL)
+		{
+			FR::ReplaceAll(
+				lpfr->lpstrFindWhat,
+				lpfr->lpstrReplaceWith,
+				hEditWindow,
+				lpfr->Flags
+			);
+		}
+	}
 }
 
 LRESULT AppWindow::OnSize(HWND hWnd, LPARAM lParam)
@@ -436,7 +481,7 @@ void AppWindow::OnFind(void)
 		g_FindReplace.hwndOwner = m_hWndSelf;
 		g_FindReplace.lpstrFindWhat = find_buffer;
 		g_FindReplace.wFindWhatLen = FIND_BUFFER_SIZE;
-		g_FindReplace.Flags = 0;
+		g_FindReplace.Flags = FR_DOWN | FR_MATCHCASE | FR_WHOLEWORD;
 
 		*m_pFindDialog = FindText(&g_FindReplace);
 	}
@@ -455,7 +500,7 @@ void AppWindow::OnReplace(void)
 		g_FindReplace.wFindWhatLen = FIND_BUFFER_SIZE;
 		g_FindReplace.lpstrReplaceWith = replace_buffer;
 		g_FindReplace.wReplaceWithLen = FIND_BUFFER_SIZE;
-		g_FindReplace.Flags = 0;
+		g_FindReplace.Flags = FR_DOWN | FR_MATCHCASE | FR_WHOLEWORD;
 
 		*m_pFindDialog = ReplaceText(&g_FindReplace);
 	}
