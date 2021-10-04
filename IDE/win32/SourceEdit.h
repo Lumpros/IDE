@@ -32,7 +32,11 @@ public:
 
 	void RefreshStatusBarText(void);
 	void HandleMouseWheel(WPARAM wParam);
+	
+	// First line is 1
+	void ScrollTo(int line);
 
 	bool HasBeenEdited(void) const { return m_haveContentsBeenEdited; };
 };
 
+extern void MarkSourceAsEdited(SourceEdit* pSourceEdit);

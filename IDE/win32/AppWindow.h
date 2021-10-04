@@ -37,6 +37,7 @@ private:
 
 	LRESULT HandleFileMenuCommands(HWND hWnd, WPARAM wIdentifier);
 	LRESULT HandleViewMenuCommands(HWND hWnd, WPARAM wIdentifier);
+	LRESULT HandleEditMenuCommands(HWND hWnd, WPARAM wIdentifier);
 
 	void OpenFolderFromCommandLine(LPWSTR lpCmdLine);
 	void RefreshChildPositions(void);

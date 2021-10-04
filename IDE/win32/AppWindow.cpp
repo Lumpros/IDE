@@ -1,9 +1,10 @@
 #include "AppWindow.h"
 #include "Utility.h"
 #include "Logger.h"
-#include "resource.h"
 #include "ColorFormatParser.h"
 #include "Wordifier.h"
+#include "FindReplace.h"
+#include "resource.h"
 
 #include <CommCtrl.h>
 #include <ShlObj_core.h>
@@ -18,7 +19,8 @@
 static HRESULT RegisterAppWindowClass(HINSTANCE hInstance);
 static LRESULT CALLBACK AppWindowProcedure(HWND hWnd, UINT uMessage, WPARAM wParam, LPARAM lParam);
 
-UINT g_uFindReplaceMsg;
+DWORD g_dwFlags = FR_DOWN | FR_MATCHCASE | FR_WHOLEWORD;
+UINT g_uFindReplaceMsg = NULL;
 
 // This needs to be global otherwise the dialog commits suicide
 FINDREPLACE g_FindReplace;
@@ -252,8 +254,6 @@ LRESULT AppWindow::WindowProcedure(HWND hWnd, UINT uMessage, WPARAM wParam, LPAR
 	return DefWindowProc(hWnd, uMessage, wParam, lParam);
 }
 
-#include "FindReplace.h"
-
 void AppWindow::HandleFRMessage(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	LPFINDREPLACE lpfr = reinterpret_cast<LPFINDREPLACE>(lParam);
@@ -277,6 +277,8 @@ void AppWindow::HandleFRMessage(HWND hWnd, WPARAM wParam, LPARAM lParam)
 				          hEditWindow,
 				          lpfr->Flags))
 			{
+				g_dwFlags = lpfr->Flags;
+
 				std::wstring not_found_msg = L"Cannot find \"";
 				not_found_msg.append(lpfr->lpstrFindWhat);
 				not_found_msg.push_back(L'\"');
@@ -289,21 +291,24 @@ void AppWindow::HandleFRMessage(HWND hWnd, WPARAM wParam, LPARAM lParam)
 
 		else if (lpfr->Flags & FR_REPLACE)
 		{
-			FR::Replace(
-				lpfr->lpstrReplaceWith,
-				hEditWindow,
-				lpfr->Flags
-			);
+			if (FR::Replace(lpfr->lpstrReplaceWith,
+				            hEditWindow,
+				            lpfr->Flags))
+			{
+				::MarkSourceAsEdited(pTab->GetSourceEdit());
+			}
 		}
 
 		else if (lpfr->Flags & FR_REPLACEALL)
 		{
-			FR::ReplaceAll(
-				lpfr->lpstrFindWhat,
-				lpfr->lpstrReplaceWith,
-				hEditWindow,
-				lpfr->Flags
-			);
+			if (FR::ReplaceAll(lpfr->lpstrFindWhat,
+				               lpfr->lpstrReplaceWith,
+				               hEditWindow,
+				               lpfr->Flags))
+			{
+				::MarkSourceAsEdited(pTab->GetSourceEdit());
+				
+			}
 		}
 	}
 }
@@ -405,49 +410,7 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 	
 	if (wIdentifier >= ID_EDIT && wIdentifier <= ID_EDIT_SELECTALL)
 	{
-		SourceTab* pTab = m_pWorkArea->GetSelectedTab();
-
-		if (pTab) {
-			HWND hEditWnd = pTab->GetSourceEdit()->GetHandle();
-			
-			switch (wIdentifier)
-			{
-			case ID_EDIT_UNDO:
-				SendMessage(hEditWnd, EM_UNDO, NULL, NULL);
-				Utility::UpdateUndoMenuButton(hEditWnd);
-				break;
-
-			case ID_EDIT_SELECTALL:
-				OnSelectAll(hEditWnd);
-				break;
-
-			case ID_EDIT_PASTE:
-				SendMessage(hEditWnd, EM_PASTESPECIAL, CF_UNICODETEXT, NULL);
-				Utility::UpdateUndoMenuButton(hEditWnd);
-				break;
-
-			case ID_EDIT_COPY:
-				SendMessage(hEditWnd, WM_COPY, NULL, NULL);
-				Utility::RefreshPasteMenuButton(GetMenu(hWnd));
-				break;
-
-			case ID_EDIT_CUT:
-				SendMessage(hEditWnd, WM_COPY, NULL, NULL);
-				SendMessage(hEditWnd, EM_REPLACESEL, TRUE, reinterpret_cast<LPARAM>(L""));
-				Utility::RefreshPasteMenuButton(GetMenu(hWnd));
-				break;
-
-			case ID_EDIT_FIND:
-				OnFind();
-				break;
-
-			case ID_EDIT_REPLACE:
-				OnReplace();
-				break;
-			}
-		}
-
-		return 0;
+		return HandleEditMenuCommands(hWnd, wIdentifier);
 	}
 
 	if (wIdentifier >= ID_VIEW && wIdentifier <= ID_VIEW_STATUSBAR)
@@ -473,6 +436,163 @@ LRESULT AppWindow::OnCommand(HWND hWnd, WPARAM wParam)
 	return 0;
 }
 
+LRESULT CALLBACK LineEditSubclassProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR)
+{
+	switch (uMsg)
+	{
+	case WM_CHAR:
+		LRESULT lret = DefSubclassProc(hWnd, uMsg, wParam, lParam);
+		HWND hGoToButton = GetDlgItem(GetParent(hWnd), IDOK);
+
+		if (GetWindowTextLength(hWnd) == 0) 
+		{
+			EnableWindow(hGoToButton, FALSE);
+		}
+
+		else
+		{
+			EnableWindow(hGoToButton, TRUE);
+		}
+
+		return lret;
+	}
+
+	return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
+int g_iLineToGoTo = 1;
+
+static INT_PTR CALLBACK GotoLineDialogProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	static int line_count;
+
+	switch (uMsg)
+	{
+	case WM_INITDIALOG:
+	{
+		line_count = lParam;
+		std::wstring line_text = L"&Line number (1 - ";
+		line_text.append(std::to_wstring(lParam));
+		line_text.append(L"):");
+		HWND hEdit = GetDlgItem(hWnd, IDC_LINE_NUMBER_EDIT);
+		SetDlgItemText(hWnd, IDC_LINE_NUMBER_STATIC, line_text.c_str());
+		SendMessage(hEdit, EM_SETLIMITTEXT, 9, NULL);
+		SetFocus(hEdit);
+		SetWindowSubclass(GetDlgItem(hWnd, IDC_LINE_NUMBER_EDIT), LineEditSubclassProcedure, NULL, NULL);
+	}
+		break;
+
+	case WM_CLOSE:
+		EndDialog(hWnd, IDCLOSE);
+		break;
+
+	case WM_COMMAND:
+		switch (wParam)
+		{
+		case IDCANCEL:
+			EndDialog(hWnd, IDCANCEL);
+			break;
+
+		// Go To Button
+		case IDOK:
+			wchar_t num[16];
+			GetDlgItemText(hWnd, IDC_LINE_NUMBER_EDIT, num, 16);
+			int val = _wtoi(num);
+			if (val > line_count)
+				MessageBox(hWnd, L"Value out of range", L"Error", MB_OK | MB_ICONERROR);
+			else {
+				g_iLineToGoTo = val;
+				EndDialog(hWnd, IDOK);
+			}
+			break;
+		}
+		break;
+	}
+
+	return 0;
+}
+
+LRESULT AppWindow::HandleEditMenuCommands(HWND hWnd, WPARAM wIdentifier)
+{
+	SourceTab* pTab = m_pWorkArea->GetSelectedTab();
+
+	if (pTab != nullptr) 
+	{
+		HWND hEditWnd = pTab->GetSourceEdit()->GetHandle();
+
+		switch (wIdentifier)
+		{
+		case ID_EDIT_UNDO:
+			SendMessage(hEditWnd, EM_UNDO, NULL, NULL);
+			Utility::UpdateUndoMenuButton(hEditWnd);
+			break;
+
+		case ID_EDIT_SELECTALL:
+			OnSelectAll(hEditWnd);
+			break;
+
+		case ID_EDIT_PASTE:
+			SendMessage(hEditWnd, EM_PASTESPECIAL, CF_UNICODETEXT, NULL);
+			Utility::UpdateUndoMenuButton(hEditWnd);
+			break;
+
+		case ID_EDIT_COPY:
+			SendMessage(hEditWnd, WM_COPY, NULL, NULL);
+			Utility::RefreshPasteMenuButton(GetMenu(hWnd));
+			break;
+
+		case ID_EDIT_CUT:
+			SendMessage(hEditWnd, WM_COPY, NULL, NULL);
+			SendMessage(hEditWnd, EM_REPLACESEL, TRUE, reinterpret_cast<LPARAM>(L""));
+			Utility::RefreshPasteMenuButton(GetMenu(hWnd));
+			break;
+
+		case ID_EDIT_FIND:
+			OnFind();
+			break;
+
+		case ID_EDIT_REPLACE:
+			OnReplace();
+			break;
+
+		case ID_EDIT_FINDNEXT:
+			if (g_uFindReplaceMsg != NULL)
+			{
+				FR::Find(
+					g_FindReplace.lpstrFindWhat,
+					hEditWnd,
+					g_dwFlags | FR_DOWN
+				);
+			}
+			break;
+
+		case ID_EDIT_FINDPREVIOUS:
+			if (g_uFindReplaceMsg != NULL)
+			{
+				FR::Find(
+					g_FindReplace.lpstrFindWhat,
+					hEditWnd,
+					g_dwFlags ^ FR_DOWN
+				);
+			}
+			break;
+			
+		case ID_EDIT_GOTO:
+			DialogBoxParam(
+				NULL,
+				MAKEINTRESOURCE(IDD_GOTO_LINE),
+				hWnd,
+				GotoLineDialogProcedure,
+				SendMessage(hEditWnd, EM_GETLINECOUNT, NULL, NULL)
+			);
+			pTab->GetSourceEdit()->ScrollTo(g_iLineToGoTo);
+			break;
+		}
+	}
+
+	return 0;
+}
+
 void AppWindow::OnFind(void)
 {
 	if (!(*m_pFindDialog)) {
@@ -481,7 +601,7 @@ void AppWindow::OnFind(void)
 		g_FindReplace.hwndOwner = m_hWndSelf;
 		g_FindReplace.lpstrFindWhat = find_buffer;
 		g_FindReplace.wFindWhatLen = FIND_BUFFER_SIZE;
-		g_FindReplace.Flags = FR_DOWN | FR_MATCHCASE | FR_WHOLEWORD;
+		g_FindReplace.Flags = g_dwFlags;
 
 		*m_pFindDialog = FindText(&g_FindReplace);
 	}
@@ -500,7 +620,7 @@ void AppWindow::OnReplace(void)
 		g_FindReplace.wFindWhatLen = FIND_BUFFER_SIZE;
 		g_FindReplace.lpstrReplaceWith = replace_buffer;
 		g_FindReplace.wReplaceWithLen = FIND_BUFFER_SIZE;
-		g_FindReplace.Flags = FR_DOWN | FR_MATCHCASE | FR_WHOLEWORD;
+		g_FindReplace.Flags = g_dwFlags;
 
 		*m_pFindDialog = ReplaceText(&g_FindReplace);
 	}

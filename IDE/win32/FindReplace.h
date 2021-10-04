@@ -10,11 +10,11 @@ namespace FR
 		      HWND hEditControl,
 		      DWORD dwFlags);
 
-	void Replace(const wchar_t* lpszReplace,
+	bool Replace(const wchar_t* lpszReplace,
 		         HWND hEditControl,
 		         DWORD dwFlags);
 
-	void ReplaceAll(const wchar_t* lpszFind,
+	bool ReplaceAll(const wchar_t* lpszFind,
 		            const wchar_t* lpszReplace,
 		            HWND hEditControl,
 		            DWORD dwFlags);

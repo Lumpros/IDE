@@ -19,7 +19,7 @@
 static bool g_hasBeenParsed = false;
 static ColorFormatParser g_KeywordColorParser;
 
-static void MarkSourceAsEdited(SourceEdit* pSourceEdit)
+void MarkSourceAsEdited(SourceEdit* pSourceEdit)
 {
 	if (pSourceEdit != nullptr)
 	{
@@ -353,6 +353,8 @@ SourceEdit::SourceEdit(HWND hParentWindow)
 		0
 	);
 
+	SendMessage(m_hWndSelf, EM_AUTOURLDETECT, AURL_ENABLEURL, NULL);
+
 	AdjustFontForDPI();
 	AdjustLeftMarginForDPI();
 
@@ -445,6 +447,21 @@ void SourceEdit::HandleMouseWheel(WPARAM wParam)
 	if ((LOWORD(wParam) & MK_CONTROL) == MK_CONTROL)
 	{
 		m_Zoomer.Update(GET_WHEEL_DELTA_WPARAM(wParam));
+	}
+}
+
+void SourceEdit::ScrollTo(int line)
+{
+	if (line >= 1)
+	{
+		int iLineCount = SendMessage(m_hWndSelf, EM_GETLINECOUNT, NULL, NULL);
+
+		if (line <= iLineCount)
+		{
+			int iLinesToScroll = line - SendMessage(m_hWndSelf, EM_GETFIRSTVISIBLELINE, NULL, NULL) - 1;
+
+			SendMessage(m_hWndSelf, EM_LINESCROLL, 0, iLinesToScroll);
+		}
 	}
 }
 
