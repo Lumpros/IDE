@@ -578,14 +578,16 @@ LRESULT AppWindow::HandleEditMenuCommands(HWND hWnd, WPARAM wIdentifier)
 			break;
 			
 		case ID_EDIT_GOTO:
-			DialogBoxParam(
-				NULL,
-				MAKEINTRESOURCE(IDD_GOTO_LINE),
-				hWnd,
-				GotoLineDialogProcedure,
-				SendMessage(hEditWnd, EM_GETLINECOUNT, NULL, NULL)
-			);
-			pTab->GetSourceEdit()->ScrollTo(g_iLineToGoTo);
+			if (DialogBoxParam(NULL,
+				               MAKEINTRESOURCE(IDD_GOTO_LINE),
+				               hWnd,
+				               GotoLineDialogProcedure,
+				               SendMessage(hEditWnd, EM_GETLINECOUNT, NULL, NULL)) == IDOK)
+			{
+				pTab->GetSourceEdit()->ScrollTo(g_iLineToGoTo);
+				std::wstring sbMsg = L"Went to line " + std::to_wstring(g_iLineToGoTo);
+				m_pStatusBar->SetText(sbMsg.c_str(), 0);
+			}
 			break;
 		}
 	}

@@ -103,28 +103,21 @@ static double GetZoomScale(HWND hWnd)
 	return numerator / static_cast<double>(denominator);
 }
 
-static void DrawLineNumberingBackground(HDC hDC, HWND hWnd, const RECT* p_rcClient)
+static inline int GetLeftMargin(HWND hWnd)
 {
 	double zoom_scale = ::GetZoomScale(hWnd);
 
-	const int left_margin = static_cast<const int>(LOWORD(SendMessage(hWnd, EM_GETMARGINS, NULL, NULL)) * zoom_scale);
+	return static_cast<const int>(LOWORD(SendMessage(hWnd, EM_GETMARGINS, NULL, NULL)) * zoom_scale);
+}
 
+static void DrawLineNumberingBackground(HDC hDC, HWND hWnd, const RECT* p_rcClient)
+{
 	SelectObject(hDC, GetStockObject(DC_BRUSH));
 	SelectObject(hDC, GetStockObject(DC_PEN));
 	SetDCBrushColor(hDC, RGB(230, 230, 230));
 	SetDCPenColor(hDC, RGB(230, 230, 230));
 
-	Rectangle(hDC, p_rcClient->left, 0, left_margin + p_rcClient->left, p_rcClient->bottom);
-}
-
-static int CalculateLineNumberContainerHorizontalOffset(HWND hWnd)
-{
-	SCROLLINFO sInfo = {};
-	sInfo.cbSize = sizeof(SCROLLINFO);
-	sInfo.fMask = SIF_ALL;
-	GetScrollInfo(hWnd, SB_HORZ, &sInfo);
-
-	return -(sInfo.nTrackPos - sInfo.nPos);
+	Rectangle(hDC, p_rcClient->left, 0, GetLeftMargin(hWnd), p_rcClient->bottom);
 }
 
 static int CalculateLineNumberContainerVerticalOffset(HWND hWnd, int iLineHeight)
@@ -134,12 +127,7 @@ static int CalculateLineNumberContainerVerticalOffset(HWND hWnd, int iLineHeight
 	sInfo.fMask = SIF_ALL;
 	GetScrollInfo(hWnd, SB_VERT, &sInfo);
 
-	int offset = 0;
-
-	if (sInfo.nTrackPos != 0)
-	{
-		offset = (sInfo.nTrackPos - sInfo.nPos);
-	}
+	int offset = (sInfo.nTrackPos - sInfo.nPos);
 
 	return -offset % iLineHeight;
 }
@@ -192,14 +180,22 @@ static void DrawLineNumbers(HDC hDC, HWND hWnd, const RECT* p_rcRect)
 /// <param name="hWnd"> Handle to the edit control </param>
 static LRESULT OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
-	LRESULT result = DefSubclassProc(hWnd, WM_PAINT, wParam, lParam);
-
-	HDC hDC = GetDC(hWnd);
+	const int left_margin = ::GetLeftMargin(hWnd);
 
 	RECT rcClient;
 	GetClientRect(hWnd, &rcClient);
 
-	rcClient.left = ::CalculateLineNumberContainerHorizontalOffset(hWnd);
+	RECT rcLines;
+	rcLines.left = 0;
+	rcLines.right = left_margin;
+	rcLines.bottom = rcClient.bottom;
+	rcLines.top = 0;
+
+	ValidateRect(hWnd, &rcLines);
+
+	LRESULT result = DefSubclassProc(hWnd, WM_PAINT, wParam, lParam);
+
+	HDC hDC = GetDC(hWnd);
 
 	DrawLineNumberingBackground(hDC, hWnd, &rcClient);
 	DrawLineNumbers(hDC, hWnd, &rcClient);
@@ -224,6 +220,7 @@ static LRESULT OnKeyDown(HWND hWnd, WPARAM wParam, LPARAM lParam)
 
 		case 'V': /* Remove format from pasted text */
 			SendMessage(hWnd, EM_PASTESPECIAL, CF_UNICODETEXT, NULL);
+			Utility::UpdateUndoMenuButton(hWnd);
 			return 0;
 
 		case 'C': {
@@ -312,9 +309,22 @@ LRESULT CALLBACK SourceEditSubclassProcedure(HWND hWnd, UINT uMsg, WPARAM wParam
 		return OnKeyDown(hWnd, wParam, lParam);
 
 	case WM_MOUSEWHEEL:
+	{
 		LRESULT ret = DefSubclassProc(hWnd, uMsg, wParam, lParam);
 		pSource->HandleMouseWheel(wParam);
 		return ret;
+	}
+
+	case WM_HSCROLL:
+	{
+		RECT rcInvalid;
+		rcInvalid.left = 0;
+		rcInvalid.right = ::GetLeftMargin(hWnd) * 2;
+		rcInvalid.top = 0;
+		rcInvalid.bottom = pSource->GetRect().bottom;
+		InvalidateRect(hWnd, &rcInvalid, FALSE);
+	}
+		break;
 	}
 
 	return DefSubclassProc(hWnd, uMsg, wParam, lParam);
