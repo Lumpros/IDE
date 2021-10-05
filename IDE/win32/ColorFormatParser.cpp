@@ -12,7 +12,17 @@
 /* e.g. int 0 255 0 */
 void ColorFormatParser::ParseFile(const wchar_t* lpszFileName)
 {
-	std::wifstream t(lpszFileName);
+	wchar_t buf[MAX_PATH];
+	GetModuleFileName(NULL, buf, MAX_PATH);
+
+	std::wstring full_path;
+	full_path.reserve(MAX_PATH);
+	full_path.append(buf);
+	full_path.resize(full_path.find_last_of(L'\\'));
+	full_path.push_back(L'\\');
+	full_path.append(lpszFileName);
+
+	std::wifstream t(full_path);
 	
 	if (t.fail())
 	{

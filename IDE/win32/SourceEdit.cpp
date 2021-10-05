@@ -55,6 +55,45 @@ void MarkSourceAsEdited(SourceEdit* pSourceEdit)
 	}
 }
 
+static void OnCharColorWord(HWND hWnd)
+{
+	CHARRANGE cr;
+	SendMessage(hWnd, EM_EXGETSEL, NULL, reinterpret_cast<LPARAM>(&cr));
+
+	DWORD dwLeft = SendMessage(hWnd, EM_FINDWORDBREAK, WB_MOVEWORDLEFT, cr.cpMin);
+	DWORD dwRight = SendMessage(hWnd, EM_FINDWORDBREAK, WB_MOVEWORDRIGHT, cr.cpMin);
+
+	wchar_t* lpsz = new wchar_t[dwRight - dwLeft + 1];
+	SendMessage(hWnd, EM_SETSEL, dwLeft, dwRight);
+	SendMessage(hWnd, EM_GETSELTEXT, NULL, (LPARAM)lpsz);
+
+	signed int offset = 0;
+
+	for (int i = min(lstrlen(lpsz) - 1, dwRight - dwLeft); i > 0 && (iswspace(lpsz[i]) || iswpunct(lpsz[i])); --i) {
+		--offset;
+		lpsz[i] = L'\0';
+	}
+
+	SendMessage(hWnd, EM_SETSEL, dwLeft, dwRight + offset);
+
+	CRSTATUS crStatus = g_KeywordColorParser.GetKeywordColor(lpsz);
+
+	CHARFORMAT cf;
+	cf.cbSize = sizeof(cf);
+	cf.dwMask = CFM_COLOR;
+	cf.dwEffects = 0;
+	cf.crTextColor = crStatus.wasFound ? crStatus.cr : 0x000000;
+
+	SendMessage(hWnd,
+		        EM_SETCHARFORMAT,
+		        SCF_WORD | SCF_SELECTION,
+		        reinterpret_cast<LPARAM>(&cf));
+
+	SendMessage(hWnd, EM_SETSEL, cr.cpMin, cr.cpMax);
+
+	delete[] lpsz;
+}
+
 static LRESULT OnChar(HWND hWnd, WPARAM wParam, LPARAM lParam, DWORD_PTR dwRefData)
 {
 	LRESULT result = DefSubclassProc(hWnd, WM_CHAR, wParam, lParam);
@@ -67,6 +106,8 @@ static LRESULT OnChar(HWND hWnd, WPARAM wParam, LPARAM lParam, DWORD_PTR dwRefDa
 	}
 
 	Utility::UpdateUndoMenuButton(hWnd);
+
+	OnCharColorWord(hWnd);
 
 	return result;
 }
@@ -341,7 +382,7 @@ SourceEdit::SourceEdit(HWND hParentWindow)
 	if (!g_hasBeenParsed)
 	{
 		g_KeywordColorParser.ParseFile(L"keywords.color");
-		g_hasBeenParsed = false;
+		g_hasBeenParsed = true;
 	}
 
 	m_hWndParent = hParentWindow;

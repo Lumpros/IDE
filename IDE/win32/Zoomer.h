@@ -30,7 +30,7 @@ private:
 	StatusBar* m_pStatusBar = nullptr;
 	SourceEdit* m_pSourceEdit = nullptr;
 
-	int m_iZoomDenominator = 100;
+	int m_iZoomDenominator = 90;
 	int m_iZoomNumerator = 100;
 };
 
